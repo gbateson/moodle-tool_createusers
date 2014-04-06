@@ -62,6 +62,7 @@ class tool_createusers_form extends moodleform {
 
         $mform = $this->_form;
         $tool = 'tool_createusers';
+        $dot = get_string('stringseparator', $tool);
 
         //==========================
         // usernames
@@ -69,7 +70,9 @@ class tool_createusers_form extends moodleform {
         //
         $name = 'usernames';
         $mform->addElement('header', $name, get_string($name, $tool));
-        $mform->setExpanded($name, true);
+        if (method_exists($mform, 'setExpanded')) {
+            $mform->setExpanded($name, true);
+        }
 
         // number of users
         $name = 'countusers';
@@ -81,7 +84,7 @@ class tool_createusers_form extends moodleform {
         $name = 'usernameprefix';
         $mform->addElement('text', $name, get_string('prefix', $tool), array('size' => self::SIZE_TEXT));
         $mform->setType($name, PARAM_TEXT);
-        $mform->setDefault($name, get_string('default'.$name, $tool));
+        $mform->setDefault($name, get_string('default'.$name, $tool).$dot);
 
         // username numeric type
         $name = 'usernametype';
@@ -122,7 +125,9 @@ class tool_createusers_form extends moodleform {
         //
         $name = 'passwords';
         $mform->addElement('header', $name, get_string($name, $tool));
-        $mform->setExpanded($name, true);
+        if (method_exists($mform, 'setExpanded')) {
+            $mform->setExpanded($name, true);
+        }
 
         // password type
         $name = 'passwordtype';
@@ -137,7 +142,7 @@ class tool_createusers_form extends moodleform {
         $name = 'passwordprefix';
         $mform->addElement('text', $name, get_string('prefix', $tool), array('size' => self::SIZE_TEXT));
         $mform->setType($name, PARAM_TEXT);
-        $mform->setDefault($name, array_rand($this->lowercase).'.');
+        $mform->setDefault($name, array_rand($this->lowercase).$dot);
 
         // num of lowercase
         $name = 'countlowercase';
@@ -175,7 +180,9 @@ class tool_createusers_form extends moodleform {
         //
         $name = 'names';
         $mform->addElement('header', $name, get_string($name, $tool));
-        $mform->setExpanded($name, false);
+        if (method_exists($mform, 'setExpanded')) {
+            $mform->setExpanded($name, true);
+        }
 
         $types = array(self::TYPE_USERNAME => get_string('typeusername', $tool),
                        self::TYPE_FIXED    => get_string('typefixed',    $tool),
@@ -195,7 +202,7 @@ class tool_createusers_form extends moodleform {
             $prefix = $name.'prefix';
             $mform->addElement('text', $prefix, get_string('prefix', $tool), array('size' => self::SIZE_TEXT));
             $mform->setType($prefix, PARAM_TEXT);
-            $mform->setDefault($prefix, get_string('default'.$name, $tool).'.');
+            $mform->setDefault($prefix, get_string('default'.$name, $tool).$dot);
 
             // suffix
             $suffix = $name.'suffix';
@@ -210,7 +217,9 @@ class tool_createusers_form extends moodleform {
         //
         $name = 'gradesandenrolments';
         $mform->addElement('header', $name, get_string($name, $tool));
-        $mform->setExpanded($name, true);
+        if (method_exists($mform, 'setExpanded')) {
+            $mform->setExpanded($name, true);
+        }
 
         // reset grades
         $name = 'resetgrades';
@@ -245,7 +254,9 @@ class tool_createusers_form extends moodleform {
         //
         $name = 'defaults';
         $mform->addElement('header', $name, get_string($name, $tool));
-        $mform->setExpanded($name, false);
+        if (method_exists($mform, 'setExpanded')) {
+            $mform->setExpanded($name, true);
+        }
 
         // timezone
         $name = 'timezone';
@@ -328,14 +339,14 @@ class tool_createusers_form extends moodleform {
      * create_users
      */
     function create_users() {
-        global $DB;
+        global $DB, $USER;
 
         // get form data
         $data = $this->get_data();
         $time = time();
 
-        $NO = '';
-        $YES = get_string('new');
+        $OLD = '';
+        $NEW = get_string('new');
 
         $printed_headings = false;
         $columns = array('newuser', 'id', 'username', 'password', 'firstname', 'lastname', 'alternatename');
@@ -378,11 +389,11 @@ class tool_createusers_form extends moodleform {
             // add/update user
             if ($user->id) {
                 $DB->update_record('user', $user);
-                $user->newuser = $NO;
+                $user->newuser = $OLD;
             } else {
                 unset($user->id);
                 $user->id = $DB->insert_record('user', $user);
-                $user->newuser = $YES;
+                $user->newuser = $NEW;
             }
 
             // fix enrolments and grades
@@ -393,7 +404,7 @@ class tool_createusers_form extends moodleform {
                 $printed_headings = true;
                 echo html_writer::start_tag('tr', array('class' => 'headings'));
                 foreach ($columns as $column) {
-                    if ($column=='id') {
+                    if ($column=='id' || ! isset($USER->$column)) {
                         $heading = $column;
                     } else {
                         $heading = get_string($column);
@@ -595,26 +606,14 @@ class tool_createusers_form extends moodleform {
         if ($data->cancelroles) {
             role_unassign_all(array('userid' => $user->id)); // lib/accesslib.php
         }
-        foreach ($data->newenrolments as $courseid) {
-
-            if (! $context = $this->get_context(CONTEXT_COURSE, $courseid)) {
-                continue; // no course context - shouldn't happen !!
-            }
-
-            if (! $role = $this->get_role_record('student')) {
-                continue; // no student role - shouldn't happen !!
-            }
-
-            if (! $enrol = $this->get_enrol_record($courseid, $role->id, $user->id, $time)) {
-                continue; // no enrol record - shouldn't happen !!
-            }
-
-            if ($this->create_role_assignment($context->id, $role->id, $user->id, $time)) {
-                // role assigned successfully
-            }
-
-            if ($this->create_user_enrolment($enrol->id, $user->id, $time)) {
-                // user enrolled successfully
+        if ($role = $this->get_role_record('student')) {
+            foreach ($data->newenrolments as $courseid) {
+                if ($context = $this->get_context(CONTEXT_COURSE, $courseid)) {
+                    $this->create_role_assignment($context->id, $role->id, $user->id, $time);
+                }
+                if ($enrol = $this->get_enrol_record($courseid, $role->id, $user->id, $time)) {
+                    $this->create_user_enrolment($enrol->id, $user->id, $time);
+                }
             }
         }
     }
@@ -845,7 +844,6 @@ class tool_createusers_form extends moodleform {
             require_once($file);
             $function = $mod.'_update_grades';
             if (function_exists($function)) {
-                echo "run $function ...<br />";
                 $function($instance, $user->id);
             }
         }

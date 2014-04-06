@@ -26,7 +26,10 @@ define('NO_OUTPUT_BUFFERING', true);
 
 require_once('../../../config.php');
 require_once($CFG->dirroot.'/course/lib.php');
-require_once($CFG->libdir.'/adminlib.php');
+require_once($CFG->dirroot.'/lib/adminlib.php');
+
+// for Moodle <=2.5, we must include the form file manually
+require_once($CFG->dirroot.'/admin/tool/createusers/classes/form.php');
 
 admin_externalpage_setup('toolcreateusers');
 
@@ -40,12 +43,10 @@ echo $OUTPUT->header();
 
 echo $OUTPUT->heading(get_string('pageheader', 'tool_createusers'));
 
-if ($form->is_submitted()) {
-    if ($form->is_validated()) {
-        echo $OUTPUT->box_start();
-        $form->create_users();
-        echo $OUTPUT->box_end();
-    }
+if ($form->is_submitted() && $form->is_validated()) {
+    echo $OUTPUT->box_start();
+    $form->create_users();
+    echo $OUTPUT->box_end();
 }
 
 $form->display();
