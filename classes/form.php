@@ -15,19 +15,28 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Site wide search-createusers form.
+ * admin/tool/createusers.php
  *
- * @package    tool_createusers
- * @copyright  2013 Gordon Bateson {@link http://quizport.com}
+ * @package    tool
+ * @subpackage createusers
+ * @copyright  2014 Gordon Bateson {@link http://quizport.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+/** Prevent direct access to this script */
+defined('MOODLE_INTERNAL') || die;
 
+/** Include required files */
 require_once("$CFG->libdir/formslib.php");
 
 /**
- * Site wide search-createusers form.
+ * tool_createusers_form
+ *
+ * @package    tool
+ * @subpackage createusers
+ * @copyright  2014 Gordon Bateson (gordon.bateson@gmail.com)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @since      Moodle 2.0
  */
 class tool_createusers_form extends moodleform {
 
@@ -35,11 +44,11 @@ class tool_createusers_form extends moodleform {
     var $lowercase   = null;
     var $uppercase   = null;
 
-    const TYPE_FIXED     = 1;
-    const TYPE_RANDOM    = 2;
-    const TYPE_SEQUENCE  = 3;
-    const TYPE_USERID    = 4;
-    const TYPE_USERNAME  = 5;
+    const TYPE_FIXED    = 1;
+    const TYPE_RANDOM   = 2;
+    const TYPE_SEQUENCE = 3;
+    const TYPE_USERID   = 4;
+    const TYPE_USERNAME = 5;
 
     const SIZE_INT  = 5;
     const SIZE_TEXT = 10;
@@ -181,7 +190,7 @@ class tool_createusers_form extends moodleform {
         $name = 'names';
         $mform->addElement('header', $name, get_string($name, $tool));
         if (method_exists($mform, 'setExpanded')) {
-            $mform->setExpanded($name, true);
+            $mform->setExpanded($name, false);
         }
 
         $types = array(self::TYPE_USERNAME => get_string('typeusername', $tool),
@@ -255,7 +264,7 @@ class tool_createusers_form extends moodleform {
         $name = 'defaults';
         $mform->addElement('header', $name, get_string($name, $tool));
         if (method_exists($mform, 'setExpanded')) {
-            $mform->setExpanded($name, true);
+            $mform->setExpanded($name, false);
         }
 
         // timezone
@@ -574,14 +583,14 @@ class tool_createusers_form extends moodleform {
      */
     function create_random($data) {
         $chars = array();
-        for ($i=0; $i<$data->countnumeric; $i++) {
-            $chars[] = array_rand($this->numeric);
-        }
         for ($i=0; $i<$data->countlowercase; $i++) {
             $chars[] = array_rand($this->lowercase);
         }
         for ($i=0; $i<$data->countuppercase; $i++) {
             $chars[] = array_rand($this->uppercase);
+        }
+        for ($i=0; $i<$data->countnumeric; $i++) {
+            $chars[] = array_rand($this->numeric);
         }
         if ($data->shufflerandom) {
             shuffle($chars);
