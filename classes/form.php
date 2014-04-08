@@ -250,8 +250,15 @@ class tool_createusers_form extends moodleform {
 
         // enrol in the following courses
         $name = 'newenrolments';
-        $courses = $DB->get_records_menu('course', null, 'shortname', 'id,shortname');
-        $params = array('multiple' => 'multiple', 'size' => min(count($courses), 5));
+        $select = 'id <> ?';
+        $params = array(SITEID)
+        $courses = $DB->get_records_menu('course', $select, $params, 'shortname', 'id,shortname');
+        $count = count($courses);
+        if ($count <= 1) {
+            $params = array();
+        } else {
+            $params = array('multiple' => 'multiple', 'size' => min($count, 5));
+        }
         $mform->addElement('select', $name, get_string($name, $tool), $courses, $params);
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 0);
