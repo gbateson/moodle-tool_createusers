@@ -50,8 +50,9 @@ class tool_createusers_form extends moodleform {
     const TYPE_USERID   = 4;
     const TYPE_USERNAME = 5;
 
-    const SIZE_INT  = 5;
-    const SIZE_TEXT = 10;
+    const SIZE_INT      = 5;
+    const SIZE_TEXT     = 10;
+    const SIZE_LONGTEXT = 20;
 
     /**
      * constructor
@@ -78,53 +79,61 @@ class tool_createusers_form extends moodleform {
         //==========================
         //
         $name = 'usernames';
-        $mform->addElement('header', $name, get_string($name, $tool));
+        $label = get_string($name, $tool);
+        $mform->addElement('header', $name, $label);
         if (method_exists($mform, 'setExpanded')) {
             $mform->setExpanded($name, true);
         }
 
         // number of users
         $name = 'countusers';
-        $mform->addElement('text', $name, get_string($name, $tool), array('size' => self::SIZE_INT));
+        $label = get_string($name, $tool);
+        $mform->addElement('text', $name, $label, array('size' => self::SIZE_INT));
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 20);
 
         // username prefix
         $name = 'usernameprefix';
-        $mform->addElement('text', $name, get_string('prefix', $tool), array('size' => self::SIZE_TEXT));
+        $label = get_string('prefix', $tool);
+        $mform->addElement('text', $name, $label, array('size' => self::SIZE_TEXT));
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, get_string('default'.$name, $tool).$dot);
 
         // username numeric type
         $name = 'usernametype';
+        $label = get_string($name, $tool);
         $types = array(self::TYPE_USERID   => get_string('typeuserid', $tool),
-                       self::TYPE_SEQUENCE => get_string('typesequence',   $tool));
-        $mform->addElement('select', $name, get_string($name, $tool), $types);
+                       self::TYPE_SEQUENCE => get_string('typesequence', $tool));
+        $mform->addElement('select', $name, $label, $types);
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, self::TYPE_SEQUENCE);
 
         // username numeric width
         $name = 'usernamewidth';
+        $label = get_string($name, $tool);
         $width = array_combine(range(1, 8), range(1, 8));
-        $mform->addElement('select', $name, get_string($name, $tool), $width);
+        $mform->addElement('select', $name, $label, $width);
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, 3);
 
         // start users
         $name = 'startusers';
-        $mform->addElement('text', $name, get_string($name, $tool), array('size' => self::SIZE_INT));
+        $label = get_string($name, $tool);
+        $mform->addElement('text', $name, $label, array('size' => self::SIZE_INT));
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 1);
 
         // increment users
         $name = 'incrementusers';
-        $mform->addElement('text', $name, get_string($name, $tool), array('size' => self::SIZE_INT));
+        $label = get_string($name, $tool);
+        $mform->addElement('text', $name, $label, array('size' => self::SIZE_INT));
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 1);
 
         // username suffix
         $name = 'usernamesuffix';
-        $mform->addElement('text', $name, get_string('suffix', $tool), array('size' => self::SIZE_TEXT));
+        $label = get_string('suffix', $tool);
+        $mform->addElement('text', $name, $label, array('size' => self::SIZE_TEXT));
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, '');
 
@@ -133,53 +142,61 @@ class tool_createusers_form extends moodleform {
         //==========================
         //
         $name = 'passwords';
-        $mform->addElement('header', $name, get_string($name, $tool));
+        $label = get_string($name, $tool);
+        $mform->addElement('header', $name, $label);
         if (method_exists($mform, 'setExpanded')) {
             $mform->setExpanded($name, true);
         }
 
         // password type
         $name = 'passwordtype';
+        $label = get_string($name, $tool);
         $types = array(self::TYPE_FIXED    => get_string('typefixed',    $tool),
                        self::TYPE_USERNAME => get_string('typeusername', $tool),
                        self::TYPE_RANDOM   => get_string('typerandom',   $tool));
-        $mform->addElement('select', $name, get_string($name, $tool), $types);
+        $mform->addElement('select', $name, $label, $types);
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, self::TYPE_RANDOM);
 
         // password prefix
         $name = 'passwordprefix';
-        $mform->addElement('text', $name, get_string('prefix', $tool), array('size' => self::SIZE_TEXT));
+        $label = get_string('prefix', $tool);
+        $mform->addElement('text', $name, $label, array('size' => self::SIZE_TEXT));
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, array_rand($this->lowercase).$dot);
 
         // num of lowercase
         $name = 'countlowercase';
-        $mform->addElement('select', $name, get_string($name, $tool), range(0,8));
+        $label = get_string($name, $tool);
+        $mform->addElement('select', $name, $label, range(0,8));
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 0);
 
         // num of uppercase
         $name = 'countuppercase';
-        $mform->addElement('select', $name, get_string($name, $tool), range(0,8));
+        $label = get_string($name, $tool);
+        $mform->addElement('select', $name, $label, range(0,8));
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 0);
 
         // num of numeric
         $name = 'countnumeric';
-        $mform->addElement('select', $name, get_string($name, $tool), range(0,8));
+        $label = get_string($name, $tool);
+        $mform->addElement('select', $name, $label, range(0,8));
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 4);
 
         // shuffle random chars
         $name = 'shufflerandom';
-        $mform->addElement('selectyesno', $name, get_string($name, $tool));
+        $label = get_string($name, $tool);
+        $mform->addElement('selectyesno', $name, $label);
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 1);
 
         // password suffix
         $name = 'passwordsuffix';
-        $mform->addElement('text', $name, get_string('suffix', $tool), array('size' => self::SIZE_TEXT));
+        $label = get_string('suffix', $tool);
+        $mform->addElement('text', $name, $label, array('size' => self::SIZE_TEXT));
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, '');
 
@@ -188,7 +205,8 @@ class tool_createusers_form extends moodleform {
         //==========================
         //
         $name = 'names';
-        $mform->addElement('header', $name, get_string($name, $tool));
+        $label = get_string($name, $tool);
+        $mform->addElement('header', $name, $label);
         if (method_exists($mform, 'setExpanded')) {
             $mform->setExpanded($name, false);
         }
@@ -209,13 +227,15 @@ class tool_createusers_form extends moodleform {
 
             // prefix
             $prefix = $name.'prefix';
-            $mform->addElement('text', $prefix, get_string('prefix', $tool), array('size' => self::SIZE_TEXT));
+            $label = get_string('prefix', $tool);
+            $mform->addElement('text', $prefix, $label, array('size' => self::SIZE_TEXT));
             $mform->setType($prefix, PARAM_TEXT);
             $mform->setDefault($prefix, get_string('default'.$name, $tool).$dot);
 
             // suffix
             $suffix = $name.'suffix';
-            $mform->addElement('text', $suffix, get_string('suffix', $tool), array('size' => self::SIZE_TEXT));
+            $label = get_string('suffix', $tool);
+            $mform->addElement('text', $suffix, $label, array('size' => self::SIZE_TEXT));
             $mform->setType($suffix, PARAM_TEXT);
             $mform->setDefault($suffix, '');
         }
@@ -225,43 +245,55 @@ class tool_createusers_form extends moodleform {
         //==========================
         //
         $name = 'gradesandenrolments';
-        $mform->addElement('header', $name, get_string($name, $tool));
+        $label = get_string($name, $tool);
+        $mform->addElement('header', $name, $label);
         if (method_exists($mform, 'setExpanded')) {
             $mform->setExpanded($name, true);
         }
 
         // reset grades
         $name = 'resetgrades';
-        $mform->addElement('selectyesno', $name, get_string($name, $tool));
+        $label = get_string($name, $tool);
+        $mform->addElement('selectyesno', $name, $label);
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 1);
 
         // cancel role assignments
         $name = 'cancelroles';
-        $mform->addElement('selectyesno', $name, get_string($name, $tool));
+        $label = get_string($name, $tool);
+        $mform->addElement('selectyesno', $name, $label);
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 1);
 
         // cancel current enrolments
         $name = 'cancelenrolments';
-        $mform->addElement('selectyesno', $name, get_string($name, $tool));
+        $label = get_string($name, $tool);
+        $mform->addElement('selectyesno', $name, $label);
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 1);
 
         // enrol in the following courses
-        $name = 'newenrolments';
+        $name = 'enrolcourses';
+        $label = get_string($name, $tool);
         $select = 'id <> ?';
-        $params = array(SITEID)
-        $courses = $DB->get_records_menu('course', $select, $params, 'shortname', 'id,shortname');
+        $params = array(SITEID);
+        $courses = $DB->get_records_select_menu('course', $select, $params, 'shortname', 'id,shortname');
         $count = count($courses);
         if ($count <= 1) {
             $params = array();
         } else {
             $params = array('multiple' => 'multiple', 'size' => min($count, 5));
         }
-        $mform->addElement('select', $name, get_string($name, $tool), $courses, $params);
+        $mform->addElement('select', $name, $label, $courses, $params);
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 0);
+
+        // enrol in the following groups
+        $name = 'enrolgroups';
+        $label = get_string($name, $tool);
+        $mform->addElement('text', $name, $label, array('size' => self::SIZE_LONGTEXT));
+        $mform->setType($name, PARAM_TEXT);
+        $mform->setDefault($name, '');
 
         //==========================
         // defaults
@@ -269,7 +301,8 @@ class tool_createusers_form extends moodleform {
         //==========================
         //
         $name = 'defaults';
-        $mform->addElement('header', $name, get_string($name, $tool));
+        $label = get_string($name, $tool);
+        $mform->addElement('header', $name, $label);
         if (method_exists($mform, 'setExpanded')) {
             $mform->setExpanded($name, false);
         }
@@ -300,11 +333,13 @@ class tool_createusers_form extends moodleform {
         }
         $name = 'calendar';
         if (count($types) > 1) {
-            $mform->addElement('select', $name, get_string('preferredcalendar', 'calendar'), $types);
+            $label = get_string('preferredcalendar', 'calendar');
+            $mform->addElement('select', $name, $label, $types);
             $mform->setDefault($name, $CFG->calendartype);
             $mform->setType($name, PARAM_ALPHA);
         } else {
-            $mform->addElement('hidden', $name, (empty($CFG->calendartype) ? '' : $CFG->calendartype));
+            $value = (empty($CFG->calendartype) ? '' : $CFG->calendartype);
+            $mform->addElement('hidden', $name, $label);
             $mform->setType($name, PARAM_ALPHA);
         }
 
@@ -367,6 +402,13 @@ class tool_createusers_form extends moodleform {
         $printed_headings = false;
         $columns = array('newuser', 'id', 'username', 'password', 'firstname', 'lastname', 'alternatename');
 
+        if (! empty($data->enrolcourses)) {
+            $columns[] = 'courses';
+            if (! empty($data->enrolgroups)) {
+                $columns[] = 'groups';
+            }
+        }
+
         $count = max($data->countusers, 0);
         $start = max($data->startusers, 0);
         $step  = max($data->incrementusers, 1);
@@ -420,10 +462,17 @@ class tool_createusers_form extends moodleform {
                 $printed_headings = true;
                 echo html_writer::start_tag('tr', array('class' => 'headings'));
                 foreach ($columns as $column) {
-                    if ($column=='id' || ! isset($USER->$column)) {
-                        $heading = $column;
-                    } else {
-                        $heading = get_string($column);
+                    switch (true) {
+                        case ($column=='id'):
+                            $heading = $column;
+                            break;
+                        case ($column=='courses'):
+                        case ($column=='groups'):
+                        case isset($USER->$column):
+                            $heading = get_string($column);
+                            break;
+                        default:
+                            $heading = $column;
                     }
                     echo html_writer::tag('th', $heading, array('class' => $column));
                 }
@@ -434,7 +483,21 @@ class tool_createusers_form extends moodleform {
             $class = 'user '.(($i % 2) ? 'odd' : 'even');
             echo html_writer::start_tag('tr', array('class' => $class));
             foreach ($columns as $column) {
-                echo html_writer::tag('td', $user->$column, array('class' => $column));
+                if ($column=='courses') {
+                    if (is_array($data->enrolcourses)) {
+                        $enrolcourses = array_filter($data->enrolcourses);
+                        $enrolcourses = implode(',', $enrolcourses);
+                    } else {
+                        $enrolcourses = $data->enrolcourses;
+                    }
+                    echo html_writer::tag('td', $enrolcourses, array('class' => $column));
+                } else if ($column=='groups') {
+                    $enrolgroups = explode(',', $data->enrolgroups);
+                    $enrolgroups = implode(',', array_filter($enrolgroups));
+                    echo html_writer::tag('td', $enrolgroups, array('class' => $column));
+                } else {
+                    echo html_writer::tag('td', $user->$column, array('class' => $column));
+                }
             }
             echo html_writer::end_tag('tr');
         }
@@ -621,14 +684,36 @@ class tool_createusers_form extends moodleform {
         }
         if ($data->cancelroles) {
             role_unassign_all(array('userid' => $user->id)); // lib/accesslib.php
+            $DB->delete_records('groups_members', array('userid' => $user->id));
         }
-        if ($role = $this->get_role_record('student')) {
-            foreach ($data->newenrolments as $courseid) {
+        if (is_array($data->enrolcourses)) {
+            $courseids = $data->enrolcourses;
+        } else {
+            $courseids = array($data->enrolcourses);
+        }
+        $courseids = array_filter($courseids);
+        foreach ($courseids as $courseid) {
+            if ($role = $this->get_role_record('student')) {
                 if ($context = $this->get_context(CONTEXT_COURSE, $courseid)) {
-                    $this->create_role_assignment($context->id, $role->id, $user->id, $time);
+                    $this->get_role_assignment($context->id, $role->id, $user->id, $time);
+                    if ($groups = explode(',', $data->enrolgroups)) {
+                        $groups = array_filter($groups);
+                        foreach ($groups as $group) {
+                            if ($groupid = $this->get_groupid($courseid, $group, $time)) {
+                                $this->get_group_memberid($groupid, $user->id, $time);
+                            }
+                        }
+                    }
+                    if (method_exists($context, 'mark_dirty')) {
+                        // Moodle >= 2.2
+                        $context->mark_dirty();
+                    } else {
+                        // Moodle <= 2.1
+                        mark_context_dirty($context->path);
+                    }
                 }
-                if ($enrol = $this->get_enrol_record($courseid, $role->id, $user->id, $time)) {
-                    $this->create_user_enrolment($enrol->id, $user->id, $time);
+                if ($enrol = $this->get_enrol($courseid, $role->id, $user->id, $time)) {
+                    $this->get_user_enrolment($enrol->id, $user->id, $time);
                 }
             }
         }
@@ -694,7 +779,7 @@ class tool_createusers_form extends moodleform {
     }
 
     /*
-     * get_enrol_record
+     * get_enrol
      *
      * @param integer $courseid
      * @param integer $roleid
@@ -702,15 +787,13 @@ class tool_createusers_form extends moodleform {
      * @param integer $time
      * @return object or boolean (FALSE)
      */
-    function get_enrol_record($courseid, $roleid, $userid, $time) {
+    function get_enrol($courseid, $roleid, $userid, $time) {
         global $DB;
-
-        if ($enrol = $DB->get_record('enrol', array('enrol' => 'manual', 'courseid' => $courseid, 'roleid' => $roleid))) {
-            return $enrol;
+        $params = array('enrol' => 'manual', 'courseid' => $courseid, 'roleid' => $roleid);
+        if ($record = $DB->get_record('enrol', $params)) {
+            return $record;
         }
-
-        // create new $enrol record for $roleid in this $course
-        $enrol = (object)array(
+        $record = (object)array(
             'enrol'        => 'manual',
             'courseid'     => $courseid,
             'roleid'       => $roleid,
@@ -718,17 +801,14 @@ class tool_createusers_form extends moodleform {
             'timecreated'  => $time,
             'timemodified' => $time
         );
-
-        if ($enrol->id = $DB->insert_record('enrol', $enrol)) {
-            return $enrol;
+        if ($record->id = $DB->insert_record('enrol', $record)) {
+            return $record;
         }
-
-        // could not create enrol record !!
         return false;
     }
 
     /*
-     * create_role_assignment
+     * get_role_assignment
      *
      * @param integer $contextid
      * @param integer $roleid
@@ -736,43 +816,102 @@ class tool_createusers_form extends moodleform {
      * @param integer $time
      * @return boolean TRUE  if a new role_assignment was created, FALSE otherwise
      */
-    function create_role_assignment($contextid, $roleid, $userid, $time) {
+    function get_role_assignment($contextid, $roleid, $userid, $time) {
         global $DB, $USER;
         $params = array('roleid' => $roleid, 'contextid' => $contextid, 'userid' => $userid);
-        if ($DB->record_exists('role_assignments', $params)) {
-            return false;
-        } else {
-            // add new role for user in this course
-            $params['modifierid'] = $USER->id;
-            $params['timemodified'] = $time;
-            return $DB->insert_record('role_assignments', $params, false);
+        if ($record = $DB->get_record('role_assignments', $params)) {
+            return $record;
         }
+        $record = (object)array(
+            'roleid'       => $roleid,
+            'contextid'    => $contextid,
+            'userid'       => $userid,
+            'modifierid'   => $USER->id,
+            'timemodified' => $time
+        );
+        if ($record->id = $DB->insert_record('role_assignments', $record)) {
+            return $record;
+        }
+        return false; // shouldn't happen !!
     }
 
     /*
-     * create_user_enrolment
+     * get_user_enrolment
      *
      * @param integer $enrolid
      * @param integer $userid to be enrolled
      * @param integer $time
      * @return boolean TRUE if a new role_assignment was created, FALSE otherwise
      */
-    function create_user_enrolment($enrolid, $userid, $time) {
+    function get_user_enrolment($enrolid, $userid, $time) {
         global $DB, $USER;
         $params = array('enrolid' => $enrolid, 'userid' => $userid);
-        if ($DB->record_exists('user_enrolments', $params)) {
-            $DB->set_field('user_enrolments', 'timestart', $time, $params);
-            $DB->set_field('user_enrolments', 'timeend', 0, $params);
-            return false;
+        if ($record = $DB->get_record('user_enrolments', $params)) {
+            $record->timestart = $time;
+            $record->timeend = 0;
+            if ($DB->update_record('user_enrolments', $records)) {
+                return $record;
+            }
         } else {
-            // enrol user in this course
-            $params['modifierid'] = $USER->id;
-            $params['timestart'] = $time;
-            $params['timeend'] = 0;
-            $params['timecreated'] = $time;
-            $params['timemodified'] = $time;
-            return $DB->insert_record('user_enrolments', $params, false);
+            $record = (object)array(
+                'enrolid'      => $enrolid,
+                'userid'       => $userid,
+                'modifierid'   => $USER->id,
+                'timestart'    => $time,
+                'timeend'      => 0,
+                'timecreated'  => $time,
+                'timemodified' => $time
+            );
+            if ($record->id = $DB->insert_record('user_enrolments', $params)) {
+                return $record;
+            }
         }
+        return false;
+    }
+
+    /*
+     * get_groupid
+     *
+     * @param integer $courseid
+     * @param string  $name
+     * @param integer $time
+     * @return integer id of group record if one exists, FALSE otherwise
+     */
+    function get_groupid($courseid, $name, $time) {
+        global $DB;
+        if ($id = $DB->get_field('groups', 'id', array('courseid' => $courseid, 'name' => $name))) {
+            return $id;
+        }
+        // add new group for this course
+        $group = (object)array(
+            'courseid'     => $courseid,
+            'name'         => $name,
+            'timecreated'  => $time,
+            'timemodified' => $time
+        );
+        return $DB->insert_record('groups', $group);
+    }
+
+    /*
+     * get_group_memberid
+     *
+     * @param integer $groupid
+     * @param integer $userid
+     * @param integer $time
+     * @return boolean TRUE  if a new group was created, FALSE otherwise
+     */
+    function get_group_memberid($groupid, $userid, $time) {
+        global $DB;
+        if ($id = $DB->get_field('groups_members', 'id', array('groupid' => $groupid, 'userid' => $userid))) {
+            return $id;
+        }
+        // add new member for this group
+        $member = (object)array(
+            'groupid'  => $groupid,
+            'userid'   => $userid,
+            'timeadded' => $time
+        );
+        return $DB->insert_record('groups_members', $member);
     }
 
     /*
