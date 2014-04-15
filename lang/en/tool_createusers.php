@@ -67,3 +67,6 @@ $string['usernames'] = 'Usernames';
 $string['usernamesuffix'] = 'Username suffix';
 $string['usernametype'] = 'Numeric type';
 $string['usernamewidth'] = 'Numeric width';
+
+$string['userlogindetails'] = 'User login details';
+$string['userlogindetailsgroup'] = 'User login details: {$a}';
