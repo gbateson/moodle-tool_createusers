@@ -216,12 +216,17 @@ class tool_createusers_form extends moodleform {
                        self::TYPE_SEQUENCE => get_string('typesequence', $tool),
                        self::TYPE_RANDOM   => get_string('typerandom',   $tool));
 
-        $names = array('firstname', 'lastname', 'alternatename'); // , 'screenname'
+        $names = array('firstname', 'lastname', 'alternatename', 'screenname');
         foreach ($names as $name) {
+
+            if (! property_exists($USER, $name)) {
+                continue;
+            }
 
             // type
             $type = $name.'type';
-            $mform->addElement('select', $type, get_string($type, $tool), $types);
+            $label = get_string($type, $tool);
+            $mform->addElement('select', $type, $label, $types);
             $mform->setType($type, PARAM_INT);
             $mform->setDefault($type, self::TYPE_SEQUENCE);
 
@@ -358,6 +363,44 @@ class tool_createusers_form extends moodleform {
         }
 
         //==========================
+        // display
+        // (see user/editlib.php)
+        //==========================
+        //
+        $name = 'display';
+        $label = get_string($name, 'form');
+        $mform->addElement('header', $name, $label);
+        if (method_exists($mform, 'setExpanded')) {
+            $mform->setExpanded($name, false);
+        }
+
+        // show newuser
+        $name = 'shownewuser';
+        $label = get_string($name, $tool);
+        $mform->addElement('selectyesno', $name, $label);
+        $mform->setType($name, PARAM_INT);
+        $mform->setDefault($name, 0);
+
+        // show userid
+        $name = 'showuserid';
+        $label = get_string($name, $tool);
+        $mform->addElement('selectyesno', $name, $label);
+        $mform->setType($name, PARAM_INT);
+        $mform->setDefault($name, 0);
+
+        // show userid
+        $name = 'showalternatename';
+        if (property_exists($USER, 'alternatename')) {
+            $label = get_string($name, $tool);
+            $mform->addElement('selectyesno', $name, $label);
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 0);
+        } else {
+            $mform->addElement('hidden', $name, 0);
+            $mform->setType($name, PARAM_INT);
+        }
+
+        //==========================
         // action buttons
         //==========================
         //
@@ -401,8 +444,12 @@ class tool_createusers_form extends moodleform {
 
         $columns = array();
 
+        if (! empty($data->shownewuser)) {
+            array_unshift($columns, 'newuser');
+        }
+
         if (! empty($data->showuserid)) {
-            array_unshift($columns, 'newuser', 'id');
+            array_unshift($columns, 'id');
         }
 
         // always show these columns
@@ -921,11 +968,11 @@ class tool_createusers_form extends moodleform {
         $group = (object)array(
             'courseid'     => $courseid,
             'name'         => $name,
-            'description'  => '',
-            'descriptionformat'  => FORMAT_MOODLE,
-            'enrolmentkey' => '',
             'timecreated'  => $time,
-            'timemodified' => $time
+            'timemodified' => $time,
+            'enrolmentkey' => '',
+            'description'  => '',
+            'descriptionformat'  => FORMAT_MOODLE
         );
         return $DB->insert_record('groups', $group);
     }
@@ -1090,7 +1137,8 @@ class tool_createusers_form extends moodleform {
     /**
      * format_courses_and_groups
      *
-     * @param object $data
+     * @param  object $data
+     * @return array(string $courses, string $groups)
      */
     function format_courses_and_groups($data) {
         global $DB;
@@ -1142,7 +1190,7 @@ class tool_createusers_form extends moodleform {
             }
             $groups = implode(', ', $groups);
         } else {
-            $groups = ''; // shoulldn't happen !!
+            $groups = ''; // shouldn't happen !!
         }
 
         return array($courses, $groups);
@@ -1184,16 +1232,16 @@ class tool_createusers_form extends moodleform {
         if ($courses = $DB->get_records_select('course', "id $select", $params, 'id', 'id,shortname')) {
             foreach ($courses as $course) {
                 if (empty($groups)) {
-                    if ($page = $this->add_login_resource($course->id, $table)) {
-                        $url = new moodle_url('/mod/page/view.php', array('id' => $page->id));
-                        $link = html_writer::link($url, $page->name, array('target' => '_blank'));
+                    if ($cm = $this->add_login_resource($course->id, $table)) {
+                        $url = new moodle_url('/mod/page/view.php', array('id' => $cm->id));
+                        $link = html_writer::link($url, $cm->name, array('target' => '_blank'));
                         $links .= html_writer::tag('li', $link);
                     }
                 } else {
                     foreach ($groups as $group) {
-                        if ($page = $this->add_login_resource($course->id, $table, $group)) {
-                            $url = new moodle_url('/mod/page/view.php', array('id' => $page->id));
-                            $link = html_writer::link($url, $page->name, array('target' => '_blank'));
+                        if ($cm = $this->add_login_resource($course->id, $table, $group)) {
+                            $url = new moodle_url('/mod/page/view.php', array('id' => $cm->id));
+                            $link = html_writer::link($url, $cm->name, array('target' => '_blank'));
                             $links .= html_writer::tag('li', $link);
                         }
                     }
@@ -1208,14 +1256,15 @@ class tool_createusers_form extends moodleform {
     /**
      * add_login_resource
      *
-     * @param object $course
-     * @param string $table
+     * @param  object  $course
+     * @param  string  $table
+     * @return object  $cm course_module record of newly added/updated page resource
      */
     function add_login_resource($courseid, $table, $group='', $sectionnum=0) {
         global $DB, $USER;
 
         static $pagemoduleid = null;
-        if ($pagemoduleid==null) {
+        if ($pagemoduleid===null) {
             $pagemoduleid = $DB->get_field('modules', 'id', array('name' => 'page'));
         }
 
@@ -1225,79 +1274,80 @@ class tool_createusers_form extends moodleform {
             $name = get_string('userlogindetailsgroup', 'tool_createusers', $group);
         }
 
-        $select = 'cm.*, p.name AS name';
+        $select = 'cm.*, ? AS modulename, p.name AS name';
         $from   = '{course_modules} cm '.
                   'JOIN {page} p ON cm.module = ? AND cm.instance = p.id';
         $where  = 'p.course = ? AND p.name = ?';
-        $params = array($pagemoduleid, $courseid, $name);
+        $params = array('page', $pagemoduleid, $courseid, $name);
         $order  = 'cm.visible DESC, cm.added DESC'; // newest, visible cm first
 
         if ($cm = $DB->get_records_sql("SELECT $select FROM $from WHERE $where ORDER BY $order", $params, 0, 1)) {
             $cm  = reset($cm);
+            $cm->content = $table;
             $DB->set_field('page', 'content', $table, array('id' => $cm->instance));
-            return $cm;
-        }
-
-        $page = (object)array(
-            // standard page resource fields
-            'name'            => $name,
-            'intro'           => ' ',
-            'introformat'     => FORMAT_HTML,
-            'content'         => $table,
-            'contentformat'   => FORMAT_HTML,
-            'tobemigrated'    => 0,
-            'legacyfiles'     => 0,
-            'legacyfileslast' => 0,
-            'display'         => 0,
-            'displayoptions'  => '',
-            'revision'        => 0,
-            'timemodified'    => time(),
-
-            // standard fields for adding a new cm
-            'course'          => $courseid,
-            'section'         => $sectionnum,
-            'module'          => $pagemoduleid,
-            'modulename'      => 'page',
-            'add'             => 'page',
-            'update'          => 0,
-            'return'          => 0,
-            'cmidnumber'      => '',
-            'visible'         => 0,
-            'groupmode'       => 0,
-            'MAX_FILE_SIZE'   => 0,
-        );
-
-        if (! $page->instance = $DB->insert_record('page', $page)) {
-            return false;
-        }
-        if (! $page->coursemodule = add_course_module($page) ) { // $mod
-            throw new reader_exception('Could not add a new course module');
-        }
-        $page->id = $page->coursemodule; // $cmid
-        if (function_exists('course_add_cm_to_section')) {
-            $sectionid = course_add_cm_to_section($courseid, $page->coursemodule, $sectionnum);
         } else {
-            $sectionid = add_mod_to_section($page);
-        }
-        if ($sectionid===false) {
-            throw new reader_exception('Could not add new course module to section: '.$sectionnum);
-        }
-        if (! $DB->set_field('course_modules', 'section',  $sectionid, array('id' => $page->coursemodule))) {
-            throw new reader_exception('Could not update the course module with the correct section');
+            $cm = (object)array(
+                // standard page resource fields
+                'name'            => $name,
+                'intro'           => ' ',
+                'introformat'     => FORMAT_HTML,
+                'content'         => $table,
+                'contentformat'   => FORMAT_HTML,
+                'tobemigrated'    => 0,
+                'legacyfiles'     => 0,
+                'legacyfileslast' => 0,
+                'display'         => 0,
+                'displayoptions'  => '',
+                'revision'        => 0,
+                'timemodified'    => time(),
+
+                // standard fields for adding a new cm
+                'course'          => $courseid,
+                'section'         => $sectionnum,
+                'module'          => $pagemoduleid,
+                'modulename'      => 'page',
+                'add'             => 'page',
+                'update'          => 0,
+                'return'          => 0,
+                'cmidnumber'      => '',
+                'visible'         => 0,
+                'groupmode'       => 0,
+                'MAX_FILE_SIZE'   => 0,
+            );
+
+            if (! $cm->instance = $DB->insert_record('page', $cm)) {
+                return false;
+            }
+            if (! $cm->id = add_course_module($cm) ) { // $mod
+                throw new moodle_exception('Could not add a new course module');
+            }
+            $cm->coursemodule = $cm->id;
+            if (function_exists('course_add_cm_to_section')) {
+                $sectionid = course_add_cm_to_section($courseid, $cm->id, $sectionnum);
+            } else {
+                $sectionid = add_mod_to_section($cm);
+            }
+            if ($sectionid===false) {
+                throw new moodle_exception('Could not add new course module to section: '.$sectionnum);
+            }
+            if (! $DB->set_field('course_modules', 'section',  $sectionid, array('id' => $cm->id))) {
+                throw new moodle_exception('Could not update the course module with the correct section');
+            }
+
+            // if the section is hidden, we should also hide the new quiz activity
+            if (! isset($cm->visible)) {
+                $cm->visible = $DB->get_field('course_sections', 'visible', array('id' => $sectionid));
+            }
+            set_coursemodule_visible($cm->id, $cm->visible);
         }
 
-        // if the section is hidden, we should also hide the new quiz activity
-        if (! isset($page->visible)) {
-            $page->visible = $DB->get_field('course_sections', 'visible', array('id' => $sectionid));
-        }
-        set_coursemodule_visible($page->coursemodule, $page->visible);
 
         // Trigger mod_updated event with information about this module.
         $event = (object)array(
-            'courseid'   => $page->course,
-            'cmid'       => $page->coursemodule,
-            'modulename' => $page->modulename,
-            'name'       => $page->name,
+            'cmid'       => $cm->id,
+            'courseid'   => $cm->course,
+            'modulename' => $cm->modulename,
+            'name'       => $cm->name,
             'userid'     => $USER->id
         );
         events_trigger('mod_updated', $event);
@@ -1305,6 +1355,6 @@ class tool_createusers_form extends moodleform {
         // rebuild_course_cache (needed for Moodle 2.0)
         rebuild_course_cache($courseid, true);
 
-        return $page;
+        return $cm;
     }
 }
