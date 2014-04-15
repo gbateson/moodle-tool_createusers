@@ -90,7 +90,7 @@ class tool_createusers_form extends moodleform {
         $name = 'countusers';
         $label = get_string($name, $tool);
         $mform->addElement('text', $name, $label, array('size' => self::SIZE_INT));
-        $mform->setAdvanced($name, $advanced);
+        $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 20);
 
         // username prefix
@@ -380,7 +380,6 @@ class tool_createusers_form extends moodleform {
 
         //==========================
         // display
-        // (see user/editlib.php)
         //==========================
         //
         $name = 'display';
