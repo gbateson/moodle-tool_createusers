@@ -62,11 +62,10 @@ $string['typerandom'] = 'Random';
 $string['typesequence'] = 'Sequential';
 $string['typeuserid'] = 'Same as user id';
 $string['typeusername'] = 'Same as username';
+$string['userlogindetails'] = 'User login details';
+$string['userlogindetailsgroup'] = 'User login details: {$a}';
 $string['usernameprefix'] = 'Username prefix';
 $string['usernames'] = 'Usernames';
 $string['usernamesuffix'] = 'Username suffix';
 $string['usernametype'] = 'Numeric type';
 $string['usernamewidth'] = 'Numeric width';
-
-$string['userlogindetails'] = 'User login details';
-$string['userlogindetailsgroup'] = 'User login details: {$a}';

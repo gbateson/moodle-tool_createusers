@@ -1243,7 +1243,7 @@ class tool_createusers_form extends moodleform {
             'name'            => $name,
             'intro'           => ' ',
             'introformat'     => FORMAT_HTML,
-            'content'         => ' ',
+            'content'         => $table,
             'contentformat'   => FORMAT_HTML,
             'tobemigrated'    => 0,
             'legacyfiles'     => 0,
