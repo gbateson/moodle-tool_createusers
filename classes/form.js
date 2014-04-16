@@ -1,20 +1,16 @@
 //<![CDATA[
 
-function createusers_showHide(btn, hidetext, showtext){
+function createusers_showHide(img, hidetext, showtext){
 
-    // "btn" is actually the "e" (event) object
-    if (btn.target) {
-        btn = btn.target;
-    } else if (btn.srcElement) {
-        btn = btn.srcElement;
-    }
-    if (btn.moodle) {
-        hidetext = btn.moodle.hidetext;
-        showtext = btn.moodle.showtext;
+    // "img" is actually the "e" (event) object
+    if (img.target) {
+        img = img.target;
+    } else if (img.srcElement) {
+        img = img.srcElement;
     }
 
-    // locate the FIELDSET object containing the btn that was clicked
-    var obj = btn;
+    // locate the FIELDSET object containing the img that was clicked
+    var obj = img;
     while (obj && obj.tagName != 'FIELDSET') {
         obj = obj.parentNode;
     }
@@ -23,15 +19,15 @@ function createusers_showHide(btn, hidetext, showtext){
     if (obj) {
         if (obj.new_display) {
             obj.new_display = '';
-            btn.innerHTML = hidetext;
+            img.src = img.src.replace('collapsed', 'expanded');
         } else {
             obj.new_display = 'none';
-            btn.innerHTML = showtext;
+            img.src = img.src.replace('expanded', 'collapsed');
         }
         var divs = obj.getElementsByTagName('div');
         var d_max = divs.length;
         for (var d=0; d<d_max; d++) {
-            if (divs[d].className.indexOf('fitem')===0) {
+            if (divs[d].className.indexOf('fcontainer')>=0) {
                 if (divs[d].style) {
                     divs[d].style.display = obj.new_display;
                 }
@@ -50,21 +46,27 @@ function createusers_setExpanded(ids, expanded) {
         var id = ids[i];
         var obj = document.getElementById(id);
         if (obj) {
-            var divs = obj.getElementsByTagName('div');
-            var d_max = divs.length;
-            for (var d=0; d<d_max; d++) {
-                if (divs[d].className=='advancedbutton') {
-                    break;
-                }
+
+            var legend = obj.getElementsByTagName('legend');
+            if (legend) {
+                var txt = document.createTextNode(' ');
+                legend[0].insertBefore(txt, legend[0].firstChild);
+                txt = null;
+                var img = document.createElement('img');
+                img.onclick = createusers_showHide;
+                img.src = location.href.replace(new RegExp('/admin/tool/.*'), '/pix/t/expanded.png');
+                legend[0].insertBefore(img, legend[0].firstChild);
+                img.onclick(img);
+                img = null;
             }
-            if (d<d_max) {
-                var btn = document.createElement('button');
-                btn.moodle = { 'hidetext' : window.hidetext, 'showtext' : window.showtext }
-                btn.appendChild(document.createTextNode(btn.moodle.hidetext));
-                btn.onclick = createusers_showHide;
-                divs[d].appendChild(btn);
-                btn.onclick(btn);
-                btn = null;
+            legend = null;
+
+            var divs = obj.getElementsByTagName('div');
+            var d_max = divs.length - 1;
+            for (var d=d_max; d>=0; d--) {
+                if (divs[d].className.indexOf('advancedbutton')>=0) {
+                    divs[d].parentNode.removeChild(divs[d]);
+                }
             }
             divs = null;
         }

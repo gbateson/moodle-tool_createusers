@@ -415,17 +415,8 @@ class tool_createusers_form extends moodleform {
             // hide sections: names, defaults, display
             // include an external javascript file
             // to add show/hide buttons where needed
-            $show = get_string('show');
-            $hide = get_string('hide');
-            $js = '';
-            $js .= '<script type="text/javascript">'."\n";
-            $js .= "//<![!CDATA[\n";
-            $js .= "window.hidetext = '$hide';\n";
-            $js .= "window.showtext = '$show';\n";
-            $js .= "//]]>\n";
-            $js .= '</script>'."\n";
             $src = new moodle_url('/admin/tool/createusers/classes/form.js');
-            $js .= '<script type="text/javascript" src="'.$src.'"></script>';
+            $js = '<script type="text/javascript" src="'.$src.'"></script>';
             $mform->addElement('static', 'form_js', '', $js);
         }
     }
