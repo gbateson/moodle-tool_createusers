@@ -84,7 +84,6 @@ class tool_createusers_form extends moodleform {
         if (method_exists($mform, 'setExpanded')) {
             $mform->setExpanded($name, true);
         }
-        $advanced = false;
 
         // number of users
         $name = 'countusers';
@@ -210,9 +209,6 @@ class tool_createusers_form extends moodleform {
         $mform->addElement('header', $name, $label);
         if (method_exists($mform, 'setExpanded')) {
             $mform->setExpanded($name, false);
-            $advanced = false;
-        } else {
-            $advanced = true;
         }
 
         $types = array(self::TYPE_USERNAME => get_string('typeusername', $tool),
@@ -232,7 +228,6 @@ class tool_createusers_form extends moodleform {
             $label = get_string($type, $tool);
             $mform->addElement('select', $type, $label, $types);
             $mform->setType($type, PARAM_INT);
-            $mform->setAdvanced($type, $advanced);
             $mform->setDefault($type, self::TYPE_SEQUENCE);
 
             // prefix
@@ -240,7 +235,6 @@ class tool_createusers_form extends moodleform {
             $label = get_string('prefix', $tool);
             $mform->addElement('text', $prefix, $label, array('size' => self::SIZE_TEXT));
             $mform->setType($prefix, PARAM_TEXT);
-            $mform->setAdvanced($prefix, $advanced);
             $mform->setDefault($prefix, get_string('default'.$name, $tool).$dot);
 
             // suffix
@@ -248,7 +242,6 @@ class tool_createusers_form extends moodleform {
             $label = get_string('suffix', $tool);
             $mform->addElement('text', $suffix, $label, array('size' => self::SIZE_TEXT));
             $mform->setType($suffix, PARAM_TEXT);
-            $mform->setAdvanced($suffix, $advanced);
             $mform->setDefault($suffix, '');
         }
 
@@ -317,9 +310,6 @@ class tool_createusers_form extends moodleform {
         $mform->addElement('header', $name, $label);
         if (method_exists($mform, 'setExpanded')) {
             $mform->setExpanded($name, false);
-            $advanced = false;
-        } else {
-            $advanced = true;
         }
 
         // timezone
@@ -333,13 +323,11 @@ class tool_createusers_form extends moodleform {
         } else {
             $mform->addElement('static', 'forcedtimezone', get_string($name), $zones[$CFG->forcetimezone]);
         }
-        $mform->setAdvanced($name, $advanced);
 
         // lang
         $name = 'lang';
         $mform->addElement('select', $name, get_string('preferredlanguage'), get_string_manager()->get_list_of_translations());
         $mform->setType($name, PARAM_ALPHANUM);
-        $mform->setAdvanced($name, $advanced);
         $mform->setDefault($name, $CFG->lang);
 
         // calendar
@@ -355,7 +343,6 @@ class tool_createusers_form extends moodleform {
             $label = get_string('preferredcalendar', 'calendar');
             $mform->addElement('select', $name, $label, $types);
             $mform->setType($name, PARAM_ALPHA);
-            $mform->setAdvanced($name, $advanced);
             $mform->setDefault($name, $CFG->calendartype);
         } else {
             $value = (empty($CFG->calendartype) ? '' : $CFG->calendartype);
@@ -368,7 +355,6 @@ class tool_createusers_form extends moodleform {
         $mform->addElement('editor', $name, get_string('userdescription'));
         $mform->addHelpButton($name, 'userdescription');
         $mform->setType($name, PARAM_CLEANHTML);
-        $mform->setAdvanced($name, $advanced);
 
         // set default description
         $element = $mform->getElement($name);
@@ -387,9 +373,6 @@ class tool_createusers_form extends moodleform {
         $mform->addElement('header', $name, $label);
         if (method_exists($mform, 'setExpanded')) {
             $mform->setExpanded($name, false);
-            $advanced = false;
-        } else {
-            $advanced = true;
         }
 
         // show newuser
@@ -397,7 +380,6 @@ class tool_createusers_form extends moodleform {
         $label = get_string($name, $tool);
         $mform->addElement('selectyesno', $name, $label);
         $mform->setType($name, PARAM_INT);
-        $mform->setAdvanced($name, $advanced);
         $mform->setDefault($name, 0);
 
         // show userid
@@ -405,7 +387,6 @@ class tool_createusers_form extends moodleform {
         $label = get_string($name, $tool);
         $mform->addElement('selectyesno', $name, $label);
         $mform->setType($name, PARAM_INT);
-        $mform->setAdvanced($name, $advanced);
         $mform->setDefault($name, 0);
 
         // show userid
@@ -414,7 +395,6 @@ class tool_createusers_form extends moodleform {
             $label = get_string($name, $tool);
             $mform->addElement('selectyesno', $name, $label);
             $mform->setType($name, PARAM_INT);
-            $mform->setAdvanced($name, $advanced);
             $mform->setDefault($name, 0);
         } else {
             $mform->addElement('hidden', $name, 0);
@@ -426,6 +406,19 @@ class tool_createusers_form extends moodleform {
         //==========================
         //
         $this->add_action_buttons(true, get_string('go'));
+
+        //==========================
+        // javascript (if required)
+        //==========================
+        //
+        if (! method_exists($mform, 'setExpanded')) {
+            // hide sections: names, defaults, display
+            // include an external javascript file
+            // to add show/hide buttons where needed
+            $src = new moodle_url('/admin/tool/createusers/classes/form.js');
+            $js = '<script type="text/javascript" src="'.$src.'"></script>';
+            $mform->addElement('static', 'form_js', '', $js);
+        }
     }
 
     /**
