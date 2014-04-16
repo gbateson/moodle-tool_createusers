@@ -1,69 +1,45 @@
 //<![CDATA[
 
-// modified "showHideOnClick" function, which hides only the section containing the button which was clicked
-function createusers_showHideOnClick(button, hidetext, showtext){
+function createusers_showHide(btn, hidetext, showtext){
 
-    // locate the FIELDSET object containing the button that was clicked
-    if (window.showHideInit) {
-        // Moodle >= 1.9: "button" is actually the "e" (event) object
-        if (button.target) {
-            button = button.target;
-        } else if (button.srcElement) {
-            button = button.srcElement;
-        }
-        hidetext = button.moodle.hideLabel;
-        showtext = button.moodle.showLabel;
+    // "btn" is actually the "e" (event) object
+    if (btn.target) {
+        btn = btn.target;
+    } else if (btn.srcElement) {
+        btn = btn.srcElement;
+    }
+    if (btn.moodle) {
+        hidetext = btn.moodle.hidetext;
+        showtext = btn.moodle.showtext;
     }
 
-    var obj = button;
-    while (obj && obj.tagName!='FIELDSET') {
+    // locate the FIELDSET object containing the btn that was clicked
+    var obj = btn;
+    while (obj && obj.tagName != 'FIELDSET') {
         obj = obj.parentNode;
     }
 
+    // toggle visibility
     if (obj) {
-        // get all "advanced" elements in this FIELDSET object
-        var toSet = findChildNodes(obj, null, 'advanced');
-
-        // get previous show/hide settings
-        var last = button.form.elements['mform_showadvanced_last'];
-        if (! last) {
-            return false;
-        }
-        if (last.value=='') {
-            var lastvalue = 0;
+        if (obj.new_display) {
+            obj.new_display = '';
+            btn.innerHTML = hidetext;
         } else {
-            var lastvalue = parseInt(last.value);
+            obj.new_display = 'none';
+            btn.innerHTML = showtext;
         }
-
-        var showhide = 0; // 0=do nothing, 1=show, -1=hide
-        if (button.initialized) {
-            if (lastvalue & button.bitmask) {
-                // this section is currently visible, so hide it
-                showhide = -1;
-                last.value = (lastvalue & (~button.bitmask));
-            } else {
-                // this section is currently hidden, so make it visible
-                showhide = 1;
-                last.value = (lastvalue | button.bitmask);
+        var divs = obj.getElementsByTagName('div');
+        var d_max = divs.length;
+        for (var d=0; d<d_max; d++) {
+            if (divs[d].className.indexOf('fitem')===0) {
+                if (divs[d].style) {
+                    divs[d].style.display = obj.new_display;
+                }
             }
-        } else {
-            if (lastvalue && ! (lastvalue & button.bitmask)) {
-                // this section is showing but it should be hidden, so hide it
-                showhide = -1;
-            }
-            button.initialized = true;
         }
-        switch (showhide) {
-            case 1:
-                elementShowHide(toSet, true);
-                button.value = hidetext;
-                break;
-            case -1:
-                elementShowHide(toSet, false);
-                button.value = showtext;
-                break;
-        }
+        divs = null;
     }
+
     //never submit the form if js is enabled.
     return false;
 }
@@ -74,9 +50,25 @@ function createusers_setExpanded(ids, expanded) {
         var id = ids[i];
         var obj = document.getElementById(id);
         if (obj) {
-            alert('add button to ' + id);
-            // add button
+            var divs = obj.getElementsByTagName('div');
+            var d_max = divs.length;
+            for (var d=0; d<d_max; d++) {
+                if (divs[d].className=='advancedbutton') {
+                    break;
+                }
+            }
+            if (d<d_max) {
+                var btn = document.createElement('button');
+                btn.moodle = { 'hidetext' : window.hidetext, 'showtext' : window.showtext }
+                btn.appendChild(document.createTextNode(btn.moodle.hidetext));
+                btn.onclick = createusers_showHide;
+                divs[d].appendChild(btn);
+                btn.onclick(btn);
+                btn = null;
+            }
+            divs = null;
         }
+        obj = null;
     }
 }
 
