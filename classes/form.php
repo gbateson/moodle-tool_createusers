@@ -314,14 +314,16 @@ class tool_createusers_form extends moodleform {
 
         // timezone
         $name = 'timezone';
+        $label = get_string($name);
         $default = '99';
         $zones = get_list_of_timezones();
         $zones[$default] = get_string('serverlocaltime');
         if (empty($CFG->forcetimezone) || $CFG->forcetimezone==$default) {
-            $mform->addElement('select', $name, get_string($name), $zones);
+            $mform->addElement('select', $name, $label, $zones);
             $mform->setDefault($name, $default);
         } else {
-            $mform->addElement('static', 'forcedtimezone', get_string($name), $zones[$CFG->forcetimezone]);
+            $zone = $zones[$CFG->forcetimezone];
+            $mform->addElement('static', 'forcedtimezone', $label, $zone);
         }
 
         // lang
@@ -389,7 +391,7 @@ class tool_createusers_form extends moodleform {
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 0);
 
-        // show userid
+        // show alternate name
         $name = 'showalternatename';
         if (property_exists($USER, 'alternatename')) {
             $label = get_string($name, $tool);
@@ -982,11 +984,11 @@ class tool_createusers_form extends moodleform {
         $group = (object)array(
             'courseid'     => $courseid,
             'name'         => $name,
-            'timecreated'  => $time,
-            'timemodified' => $time,
-            'enrolmentkey' => '',
             'description'  => '',
-            'descriptionformat'  => FORMAT_MOODLE
+            'descriptionformat' => FORMAT_MOODLE,
+            'enrolmentkey' => '',
+            'timecreated'  => $time,
+            'timemodified' => $time
         );
         return $DB->insert_record('groups', $group);
     }
@@ -1238,6 +1240,7 @@ class tool_createusers_form extends moodleform {
             $groups = $data->enrolgroups;
             if (! is_array($groups)) {
                 $groups = explode(',', $groups);
+                $groups = array_map('trim', $groups);
                 $groups = array_filter($groups);
             }
         }
