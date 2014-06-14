@@ -29,4 +29,4 @@ $plugin->component = 'tool_createusers';
 $plugin->maturity  = MATURITY_BETA;
 $plugin->requires  = 2011120500; // Moodle >= 2.2
 $plugin->version   = 2014061408;
-$plugin->release   = '2014-06-14 (08)';
+$plugin->release   = '2014-06-14 (09)';

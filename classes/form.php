@@ -57,7 +57,7 @@ class tool_createusers_form extends moodleform {
     /**
      * constructor
      */
-    function tool_createusers_form($action=null, $customdata=null, $method='post', $target='', $attributes=null, $editable=true) {
+    public function tool_createusers_form($action=null, $customdata=null, $method='post', $target='', $attributes=null, $editable=true) {
         $this->numeric   = array_flip(str_split('23456789', 1));
         $this->lowercase = array_flip(str_split('abdeghjmnpqrstuvyz', 1));
         $this->uppercase = array_flip(str_split('ABDEGHJLMNPQRSTUVWXYZ', 1));
@@ -67,7 +67,7 @@ class tool_createusers_form extends moodleform {
     /**
      * definition
      */
-    function definition() {
+    public function definition() {
         global $CFG, $DB, $USER;
 
         $mform = $this->_form;
@@ -246,10 +246,10 @@ class tool_createusers_form extends moodleform {
         }
 
         // ==================================
-        // enrolments and grades
+        // student enrolments
         // ==================================
         //
-        $name = 'enrolmentsandgrades';
+        $name = 'studentenrolments';
         $label = get_string($name, $tool);
         $mform->addElement('header', $name, $label);
         if (method_exists($mform, 'setExpanded')) {
@@ -300,14 +300,39 @@ class tool_createusers_form extends moodleform {
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, '');
 
+        // ==================================
+        // teacher enrolments
+        // ==================================
+        //
+        $name = 'teacherenrolments';
+        $label = get_string($name, $tool);
+        $mform->addElement('header', $name, $label);
+        if (method_exists($mform, 'setExpanded')) {
+            $mform->setExpanded($name, true);
+        }
+
         // enrol as teacher in individual courses in the following category
         $name = 'enrolcategory';
         $label = get_string($name, $tool);
-        $categories = $DB->get_records_select_menu('course_categories', null, null, 'sortorder', 'id,name');
-        $categories = array(0 => '') + $categories;
-        $mform->addElement('select', $name, $label, $categories);
+        $options = $DB->get_records_select_menu('course_categories', null, null, 'sortorder', 'id,name');
+        $mform->addElement('select', $name, $label, array(0 => '') + $options);
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 0);
+
+        // path to "filesystem" repository folder
+        $name = 'folderpath';
+        $label = get_string($name, $tool);
+        $options = $this->get_filesystem_folders();
+        $mform->addElement('select', $name, $label, array(0 => '') + $options);
+        $mform->setType($name, PARAM_PATH);
+        $mform->setDefault($name, '');
+
+        // remove course modules
+        $name = 'resetcourses';
+        $label = get_string($name, $tool);
+        $mform->addElement('selectyesno', $name, $label);
+        $mform->setType($name, PARAM_INT);
+        $mform->setDefault($name, 1);
 
         // ==================================
         // defaults
@@ -438,7 +463,7 @@ class tool_createusers_form extends moodleform {
      * @param array $data
      * @param array $files
      */
-    function validation($data, $files) {
+    public function validation($data, $files) {
         $errors = parent::validation($data, $files);
 
         $name = 'countusers';
@@ -457,7 +482,7 @@ class tool_createusers_form extends moodleform {
     /**
      * create_users
      */
-    function create_users() {
+    public function create_users() {
         global $DB, $USER;
 
         // get form data
@@ -616,7 +641,7 @@ class tool_createusers_form extends moodleform {
      * @param integer $data
      * @param string  $num
      */
-    function create_user($data, $num) {
+    public function create_user($data, $num) {
         global $CFG, $DB;
 
         // names
@@ -710,7 +735,7 @@ class tool_createusers_form extends moodleform {
      * @param string  $num (id or sequence)
      * @param string  $username
      */
-    function create_name($data, $name, $num, $username='') {
+    public function create_name($data, $name, $num, $username='') {
 
         $prefix = $name.'prefix';
         if (isset($data->$prefix)) {
@@ -762,7 +787,7 @@ class tool_createusers_form extends moodleform {
      * @param integer $data
      * @param integer $name
      */
-    function create_random($data) {
+    public function create_random($data) {
         $chars = array();
         for ($i=0; $i<$data->countlowercase; $i++) {
             $chars[] = array_rand($this->lowercase);
@@ -784,8 +809,8 @@ class tool_createusers_form extends moodleform {
      *
      * @param integer $userid
      */
-    function fix_enrolments($data, $user, $time) {
-        global $DB;
+    public function fix_enrolments($data, $user, $time) {
+        global $CFG, $DB;
 
         if ($data->resetgrades) {
             $this->reset_grades($user);
@@ -856,8 +881,18 @@ class tool_createusers_form extends moodleform {
                     if ($enrol = $this->get_enrol($courseid, $role->id, $user->id, $time)) {
                         $this->get_user_enrolment($enrol->id, $user->id, $time);
                     }
+                    if ($data->folderpath && file_exists($CFG->dataroot.'/repository/'.$data->folderpath)) {
+                        $this->get_repository_instance_id($context, $user->id, "$coursename files", $data->folderpath, 1);
+                    }
                     $url = new moodle_url('/course/view.php', array('id' => $courseid));
                     $category = html_writer::link($url, $coursename, array('target' => '_blank'));
+                }
+                if ($data->resetcourses) {
+                    if ($cms = $DB->get_records('course_modules', array('course' => $courseid), 'id,course')) {
+                        foreach ($cms as $cm) {
+                            $this->remove_coursemodule($cm->id);
+                        }
+                    }
                 }
             }
         }
@@ -894,7 +929,7 @@ class tool_createusers_form extends moodleform {
      * @param string $name
      * @return object or boolean (FALSE)
      */
-    function get_role_record($name) {
+    public function get_role_record($name) {
         global $DB;
 
         if ($role = $DB->get_record('role', array('shortname' => $name))) {
@@ -932,7 +967,7 @@ class tool_createusers_form extends moodleform {
      * @param integer $time
      * @return object or boolean (FALSE)
      */
-    function get_enrol($courseid, $roleid, $userid, $time) {
+    public function get_enrol($courseid, $roleid, $userid, $time) {
         global $DB;
         $params = array('enrol' => 'manual', 'courseid' => $courseid, 'roleid' => $roleid);
         if ($record = $DB->get_record('enrol', $params)) {
@@ -961,7 +996,7 @@ class tool_createusers_form extends moodleform {
      * @param integer $time
      * @return boolean TRUE  if a new role_assignment was created, FALSE otherwise
      */
-    function get_role_assignment($contextid, $roleid, $userid, $time) {
+    public function get_role_assignment($contextid, $roleid, $userid, $time) {
         global $DB, $USER;
         $params = array('roleid' => $roleid, 'contextid' => $contextid, 'userid' => $userid);
         if ($record = $DB->get_record('role_assignments', $params)) {
@@ -988,7 +1023,7 @@ class tool_createusers_form extends moodleform {
      * @param integer $time
      * @return boolean TRUE if a new role_assignment was created, FALSE otherwise
      */
-    function get_user_enrolment($enrolid, $userid, $time) {
+    public function get_user_enrolment($enrolid, $userid, $time) {
         global $DB, $USER;
         $params = array('enrolid' => $enrolid, 'userid' => $userid);
         if ($record = $DB->get_record('user_enrolments', $params)) {
@@ -1022,7 +1057,7 @@ class tool_createusers_form extends moodleform {
      * @param integer $time
      * @return integer id of group record if one exists, FALSE otherwise
      */
-    function get_groupid($courseid, $name, $time) {
+    public function get_groupid($courseid, $name, $time) {
         global $DB;
         if ($id = $DB->get_field('groups', 'id', array('courseid' => $courseid, 'name' => $name))) {
             return $id;
@@ -1048,7 +1083,7 @@ class tool_createusers_form extends moodleform {
      * @param integer $time
      * @return boolean TRUE  if a new group was created, FALSE otherwise
      */
-    function get_group_memberid($groupid, $userid, $time) {
+    public function get_group_memberid($groupid, $userid, $time) {
         global $DB;
         if ($id = $DB->get_field('groups_members', 'id', array('groupid' => $groupid, 'userid' => $userid))) {
             return $id;
@@ -1068,7 +1103,7 @@ class tool_createusers_form extends moodleform {
      * @param object $user
      * @return void
      */
-    function reset_grades($user) {
+    public function reset_grades($user) {
         global $DB;
 
         // get $user's grades
@@ -1124,7 +1159,7 @@ class tool_createusers_form extends moodleform {
      * @param object $user
      * @return void
      */
-    function reset_grades_mod($mod, $instance, $user) {
+    public function reset_grades_mod($mod, $instance, $user) {
         global $CFG, $DB;
 
         if (! $tables = $DB->get_tables() ) {
@@ -1159,7 +1194,7 @@ class tool_createusers_form extends moodleform {
      * @param object $user
      * @return void
      */
-    function reset_grades_assignment($instance, $user) {
+    public function reset_grades_assignment($instance, $user) {
         global $CFG, $DB;
         require_once($CFG->dirroot.'/mod/assignment/lib.php');
 
@@ -1177,7 +1212,7 @@ class tool_createusers_form extends moodleform {
      * @param object $user
      * @return void
      */
-    function reset_grades_quiz($instance, $user) {
+    public function reset_grades_quiz($instance, $user) {
         global $CFG, $DB;
         require_once($CFG->dirroot.'/mod/quiz/lib.php');
         require_once($CFG->dirroot.'/lib/questionlib.php');
@@ -1203,7 +1238,7 @@ class tool_createusers_form extends moodleform {
      * @param  object $data
      * @return array(string $courses, string $groups)
      */
-    function format_courses_and_groups($data) {
+    public function format_courses_and_groups($data) {
         global $DB;
 
         if (empty($data->enrolcourses)) {
@@ -1265,7 +1300,7 @@ class tool_createusers_form extends moodleform {
      * @param object $data
      * @param string $table
      */
-    function add_login_resources($data, $table) {
+    public function add_login_resources($data, $table) {
         global $DB;
 
         if (empty($data->enrolcourses)) {
@@ -1324,7 +1359,7 @@ class tool_createusers_form extends moodleform {
      * @param  string  $table
      * @return object  $cm course_module record of newly added/updated page resource
      */
-    function add_login_resource($courseid, $table, $group='', $sectionnum=0) {
+    public function add_login_resource($courseid, $table, $group='', $sectionnum=0) {
         global $DB, $USER;
 
         static $pagemoduleid = null;
@@ -1430,7 +1465,7 @@ class tool_createusers_form extends moodleform {
      * @param integer $time
      * @return mixed return id if a course was located/created, FALSE otherwise
      */
-    function get_user_courseid($categoryid, $coursename, $time, $numsections=3, $format='topics') {
+    public function get_user_courseid($categoryid, $coursename, $time, $numsections=3, $format='topics') {
         global $CFG, $DB;
 
         if ($course = $DB->get_record('course', array('shortname' => $coursename))) {
@@ -1459,6 +1494,97 @@ class tool_createusers_form extends moodleform {
             return false;
         } else {
             return $course->id;
+        }
+    }
+
+    /*
+     * get_filesystem_folders
+     */
+    public function get_filesystem_folders() {
+        global $CFG;
+        $folders = array();
+        $dir = $CFG->dataroot.'/repository';
+        if (is_dir($dir) && ($fh = opendir($dir))) {
+            while ($item = readdir($fh)) {
+                if ($item=='.' || $item=='..') {
+                    continue;
+                }
+                if (is_dir($dir.'/'.$item)) {
+                    $folders[$item] = $item;
+                    $fieldname = '';
+                }
+            }
+            closedir($fh);
+        }
+        return $folders;
+    }
+
+    /*
+     * get_repository_instance_id
+     *
+     * @param object   $context
+     * @param integer  $userid
+     * @param string   $name
+     * @param string   $path
+     * @param integer  $relativefiles
+     * @return integer id from repository_instances table
+     */
+    public function get_repository_instance_id($context, $userid, $name, $path, $relativefiles) {
+        $type = 'filesystem';
+        $params = array('type' => $type, 'currentcontext' => $context, 'context' => array($context), 'userid' => $userid);
+        if ($instances = repository::get_instances($params)) {
+            foreach ($instances as $instance) {
+                if ($instance->get_option('fs_path')==$path) {
+                    $params = array('name' => $name, 'fs_path' => $path, 'relativefiles' => $relativefiles);
+                    $instance->set_option($params);
+                    return $instance->id;
+                }
+            }
+        }
+        $params = array('name' => $name, 'fs_path' => $path, 'relativefiles' => $relativefiles);
+        return repository::static_function($type, 'create', $type, $userid, $context, $params);
+    }
+
+    /*
+     * remove_coursemodule
+     *
+     * @param integer  $cmid
+     * @return void, but may update Moodle database
+     */
+    public function remove_coursemodule($cmid) {
+        global $CFG, $DB;
+
+        if (function_exists('course_delete_module')) {
+            // Moodle >= 2.5
+            course_delete_module($cmid);
+        } else {
+            // Moodle <= 2.4
+            $cm = get_coursemodule_from_id('', $cmid, 0, true);
+
+            $libfile = $CFG->dirroot.'/mod/'.$cm->modname.'/lib.php';
+            if (! file_exists($libfile)) {
+                throw new moodle_exception("$cm->modname lib.php not accessible ($libfile)");
+            }
+            require_once($libfile);
+
+            $deleteinstancefunction = $cm->modname.'_delete_instance';
+            if (! function_exists($deleteinstancefunction)) {
+                throw new moodle_exception("$cm->modname delete function not found ($deleteinstancefunction)");
+            }
+
+            // copied from 'course/mod.php'
+            if (! $deleteinstancefunction($cm->instance)) {
+                throw new moodle_exception("Could not delete the $cm->modname (instance id=$cm->instance)");
+            }
+            if (! delete_course_module($cm->id)) {
+                throw new moodle_exception("Could not delete the $cm->modname (coursemodule, id=$cm->id)");
+            }
+            if (! $sectionid = $DB->get_field('course_sections', 'id', array('course' => $cm->course, 'section' => $cm->sectionnum))) {
+                throw new moodle_exception("Could not get section id (course id=$cm->course, section num=$cm->sectionnum)");
+            }
+            if (! delete_mod_from_section($cm->id, $sectionid)) {
+                throw new moodle_exception("Could not delete the $cm->modname (id=$cm->id) from that section (id=$sectionid)");
+            }
         }
     }
 }
