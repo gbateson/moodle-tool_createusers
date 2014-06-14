@@ -74,9 +74,9 @@ class tool_createusers_form extends moodleform {
         $tool = 'tool_createusers';
         $dot = get_string('stringseparator', $tool);
 
-        //==========================
+        // ==================================
         // usernames
-        //==========================
+        // ==================================
         //
         $name = 'usernames';
         $label = get_string($name, $tool);
@@ -137,9 +137,9 @@ class tool_createusers_form extends moodleform {
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, '');
 
-        //==========================
+        // ==================================
         // passwords
-        //==========================
+        // ==================================
         //
         $name = 'passwords';
         $label = get_string($name, $tool);
@@ -200,9 +200,9 @@ class tool_createusers_form extends moodleform {
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, '');
 
-        //==========================
+        // ==================================
         // names
-        //==========================
+        // ==================================
         //
         $name = 'names';
         $label = get_string($name, $tool);
@@ -245,11 +245,11 @@ class tool_createusers_form extends moodleform {
             $mform->setDefault($suffix, '');
         }
 
-        //==========================
-        // grades and enrolments
-        //==========================
+        // ==================================
+        // enrolments and grades
+        // ==================================
         //
-        $name = 'gradesandenrolments';
+        $name = 'enrolmentsandgrades';
         $label = get_string($name, $tool);
         $mform->addElement('header', $name, $label);
         if (method_exists($mform, 'setExpanded')) {
@@ -277,7 +277,7 @@ class tool_createusers_form extends moodleform {
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 1);
 
-        // enrol in the following courses
+        // enrol as student in the following courses
         $name = 'enrolcourses';
         $label = get_string($name, $tool);
         $select = 'id <> ?';
@@ -300,10 +300,19 @@ class tool_createusers_form extends moodleform {
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, '');
 
-        //==========================
+        // enrol as teacher in individual courses in the following category
+        $name = 'enrolcategory';
+        $label = get_string($name, $tool);
+        $categories = $DB->get_records_select_menu('course_categories', null, null, 'sortorder', 'id,name');
+        $categories = array(0 => '') + $categories;
+        $mform->addElement('select', $name, $label, $categories);
+        $mform->setType($name, PARAM_INT);
+        $mform->setDefault($name, 0);
+
+        // ==================================
         // defaults
         // (see user/editlib.php)
-        //==========================
+        // ==================================
         //
         $name = 'defaults';
         $label = get_string($name, $tool);
@@ -366,9 +375,9 @@ class tool_createusers_form extends moodleform {
             $element->setValue($value);
         }
 
-        //==========================
+        // ==================================
         // display
-        //==========================
+        // ==================================
         //
         $name = 'display';
         $label = get_string($name, 'form');
@@ -403,15 +412,15 @@ class tool_createusers_form extends moodleform {
             $mform->setType($name, PARAM_INT);
         }
 
-        //==========================
+        // ==================================
         // action buttons
-        //==========================
+        // ==================================
         //
         $this->add_action_buttons(true, get_string('go'));
 
-        //==========================
+        // ==================================
         // javascript (if required)
-        //==========================
+        // ==================================
         //
         if (! method_exists($mform, 'setExpanded')) {
             // hide sections: names, defaults, display
@@ -482,6 +491,10 @@ class tool_createusers_form extends moodleform {
             }
         }
 
+        if (! empty($data->enrolcategory)) {
+            $columns[] = 'category';
+        }
+
         $count = max($data->countusers, 0);
         $start = max($data->startusers, 0);
         $step  = max($data->incrementusers, 1);
@@ -528,7 +541,7 @@ class tool_createusers_form extends moodleform {
             }
 
             // fix enrolments and grades
-            $this->fix_enrolments($data, $user, $time);
+            $category = $this->fix_enrolments($data, $user, $time);
 
             // print headings (first time only)
             if ($table=='') {
@@ -543,7 +556,14 @@ class tool_createusers_form extends moodleform {
                             $heading = get_string('password');
                             break;
                         case ($column=='courses'):
+                            $heading = get_string('studentcourses', 'tool_createusers');
+                            break;
                         case ($column=='groups'):
+                            $heading = get_string('studentgroups', 'tool_createusers');
+                            break;
+                        case ($column=='category'):
+                            $heading = get_string('teachercourse', 'tool_createusers');
+                            break;
                         case isset($USER->$column):
                             $heading = get_string($column);
                             break;
@@ -571,6 +591,8 @@ class tool_createusers_form extends moodleform {
                     $table .= html_writer::tag('td', $courses, array('class' => $column));
                 } else if ($column=='groups') {
                     $table .= html_writer::tag('td', $groups, array('class' => $column));
+                } else if ($column=='category') {
+                    $table .= html_writer::tag('td', $category, array('class' => $column));
                 } else {
                     $table .= html_writer::tag('td', $user->$column, array('class' => $column));
                 }
@@ -815,6 +837,31 @@ class tool_createusers_form extends moodleform {
                 }
             }
         }
+
+        $category = '';
+        if ($data->enrolcategory) {
+            $coursename = $user->username;
+            if ($courseid = $this->get_user_courseid($data->enrolcategory, $coursename, $time)) {
+                if ($role = $this->get_role_record('editingteacher')) {
+                    if ($context = $this->get_context(CONTEXT_COURSE, $courseid)) {
+                        $this->get_role_assignment($context->id, $role->id, $user->id, $time);
+                        if (method_exists($context, 'mark_dirty')) {
+                            // Moodle >= 2.2
+                            $context->mark_dirty();
+                        } else {
+                            // Moodle <= 2.1
+                            mark_context_dirty($context->path);
+                        }
+                    }
+                    if ($enrol = $this->get_enrol($courseid, $role->id, $user->id, $time)) {
+                        $this->get_user_enrolment($enrol->id, $user->id, $time);
+                    }
+                    $url = new moodle_url('/course/view.php', array('id' => $courseid));
+                    $category = html_writer::link($url, $coursename, array('target' => '_blank'));
+                }
+            }
+        }
+        return $category;
     }
 
     /**
@@ -1373,5 +1420,45 @@ class tool_createusers_form extends moodleform {
         rebuild_course_cache($courseid, true);
 
         return $cm;
+    }
+
+    /*
+     * get_user_courseid
+     *
+     * @param integer $categoryid
+     * @param string  $coursename
+     * @param integer $time
+     * @return mixed return id if a course was located/created, FALSE otherwise
+     */
+    function get_user_courseid($categoryid, $coursename, $time, $numsections=3, $format='topics') {
+        global $CFG, $DB;
+
+        if ($course = $DB->get_record('course', array('shortname' => $coursename))) {
+            $DB->set_field('course', 'category', $categoryid, array('id' => $course->id));
+            return $course->id;
+        }
+
+        // create new course
+        $course = (object)array(
+            'category'      => $categoryid, // crucial !!
+            'fullname'      => $coursename,
+            'shortname'     => $coursename,
+            'summary'       => '',
+            'summaryformat' => FORMAT_PLAIN, // plain text
+            'format'        => $format,
+            'newsitems'     => 0,
+            'startdate'     => $time,
+            'visible'       => 1, // visible
+            'numsections'   => $numsections
+        );
+
+        $CFG->defaultblocks_override = ' ';
+        $course = create_course($course);
+
+        if (empty($course)) {
+            return false;
+        } else {
+            return $course->id;
+        }
     }
 }
