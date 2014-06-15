@@ -1449,7 +1449,11 @@ class tool_createusers_form extends moodleform {
             'name'       => $cm->name,
             'userid'     => $USER->id
         );
-        events_trigger('mod_updated', $event);
+        if (function_exists('events_trigger_legacy')) {
+           events_trigger_legacy('mod_updated', $event);
+        } else {
+            events_trigger('mod_updated', $event);
+        }
 
         // rebuild_course_cache (needed for Moodle 2.0)
         rebuild_course_cache($courseid, true);
