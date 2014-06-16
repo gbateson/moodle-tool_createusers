@@ -40,6 +40,7 @@ $string['defaultfirstname'] = 'First';
 $string['defaultlastname'] = 'LAST';
 $string['defaults'] = 'Defaults';
 $string['defaultusernameprefix'] = 'user';
+$string['doublebyte'] = 'Double-byte names';
 $string['enrolcategory'] = 'Course category';
 $string['enrolcourses'] = 'Enrol in these courses';
 $string['enrolgroups'] = 'Enrol in these groups';

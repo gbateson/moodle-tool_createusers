@@ -327,7 +327,14 @@ class tool_createusers_form extends moodleform {
         $mform->setType($name, PARAM_PATH);
         $mform->setDefault($name, '');
 
-        // remove course modules
+        // use double-byte names
+        $name = 'doublebyte';
+        $label = get_string($name, $tool);
+        $mform->addElement('selectyesno', $name, $label);
+        $mform->setType($name, PARAM_INT);
+        $mform->setDefault($name, 0);
+
+        // reset courses i.e. remove course modules
         $name = 'resetcourses';
         $label = get_string($name, $tool);
         $mform->addElement('selectyesno', $name, $label);
@@ -865,7 +872,11 @@ class tool_createusers_form extends moodleform {
 
         $category = '';
         if ($data->enrolcategory) {
-            $coursename = $user->username;
+            if ($data->doublebyte) {
+                $coursename = mb_convert_kana($user->username, 'AS', 'UTF-8');
+            } else {
+                $coursename = $user->username;
+            }
             if ($courseid = $this->get_user_courseid($data->enrolcategory, $coursename, $time)) {
                 if ($role = $this->get_role_record('editingteacher')) {
                     if ($context = $this->get_context(CONTEXT_COURSE, $courseid)) {
@@ -882,7 +893,7 @@ class tool_createusers_form extends moodleform {
                         $this->get_user_enrolment($enrol->id, $user->id, $time);
                     }
                     if ($data->folderpath && file_exists($CFG->dataroot.'/repository/'.$data->folderpath)) {
-                        $this->get_repository_instance_id($context, $user->id, "$coursename files", $data->folderpath, 1);
+                        $this->get_repository_instance_id($context, $user->id, "$user->username files", $data->folderpath, 1);
                     }
                     $url = new moodle_url('/course/view.php', array('id' => $courseid));
                     $category = html_writer::link($url, $coursename, array('target' => '_blank'));
@@ -1440,7 +1451,6 @@ class tool_createusers_form extends moodleform {
             set_coursemodule_visible($cm->id, $cm->visible);
         }
 
-
         // Trigger mod_updated event with information about this module.
         $event = (object)array(
             'cmid'       => $cm->id,
@@ -1450,7 +1460,7 @@ class tool_createusers_form extends moodleform {
             'userid'     => $USER->id
         );
         if (function_exists('events_trigger_legacy')) {
-           events_trigger_legacy('mod_updated', $event);
+            events_trigger_legacy('mod_updated', $event);
         } else {
             events_trigger('mod_updated', $event);
         }
