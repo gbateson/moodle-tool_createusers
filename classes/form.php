@@ -934,7 +934,7 @@ class tool_createusers_form extends moodleform {
         }
     }
 
-    /*
+    /**
      * get_role_record
      *
      * @param string $name
@@ -969,7 +969,7 @@ class tool_createusers_form extends moodleform {
         return false;
     }
 
-    /*
+    /**
      * get_enrol
      *
      * @param integer $courseid
@@ -998,7 +998,7 @@ class tool_createusers_form extends moodleform {
         return false;
     }
 
-    /*
+    /**
      * get_role_assignment
      *
      * @param integer $contextid
@@ -1026,7 +1026,7 @@ class tool_createusers_form extends moodleform {
         return false; // shouldn't happen !!
     }
 
-    /*
+    /**
      * get_user_enrolment
      *
      * @param integer $enrolid
@@ -1060,7 +1060,7 @@ class tool_createusers_form extends moodleform {
         return false;
     }
 
-    /*
+    /**
      * get_groupid
      *
      * @param integer $courseid
@@ -1086,7 +1086,7 @@ class tool_createusers_form extends moodleform {
         return $DB->insert_record('groups', $group);
     }
 
-    /*
+    /**
      * get_group_memberid
      *
      * @param integer $groupid
@@ -1108,7 +1108,7 @@ class tool_createusers_form extends moodleform {
         return $DB->insert_record('groups_members', $member);
     }
 
-    /*
+    /**
      * reset_grades
      *
      * @param object $user
@@ -1162,7 +1162,7 @@ class tool_createusers_form extends moodleform {
         }
     }
 
-    /*
+    /**
      * reset_grades_mod
      *
      * @param object $mod
@@ -1198,7 +1198,7 @@ class tool_createusers_form extends moodleform {
         }
     }
 
-    /*
+    /**
      * reset_grades_assignment
      *
      * @param object $instance
@@ -1216,7 +1216,7 @@ class tool_createusers_form extends moodleform {
         assignment_update_grades($instance, $user->id);
     }
 
-    /*
+    /**
      * reset_grades_quiz
      *
      * @param object $instance
@@ -1471,7 +1471,7 @@ class tool_createusers_form extends moodleform {
         return $cm;
     }
 
-    /*
+    /**
      * get_user_courseid
      *
      * @param integer $categoryid
@@ -1511,7 +1511,7 @@ class tool_createusers_form extends moodleform {
         }
     }
 
-    /*
+    /**
      * get_filesystem_folders
      */
     public function get_filesystem_folders() {
@@ -1533,7 +1533,7 @@ class tool_createusers_form extends moodleform {
         return $folders;
     }
 
-    /*
+    /**
      * get_repository_instance_id
      *
      * @param object   $context
@@ -1559,7 +1559,7 @@ class tool_createusers_form extends moodleform {
         return repository::static_function($type, 'create', $type, $userid, $context, $params);
     }
 
-    /*
+    /**
      * remove_coursemodule
      *
      * @param integer  $cmid
