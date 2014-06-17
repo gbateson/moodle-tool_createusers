@@ -285,6 +285,7 @@ class tool_createusers_form extends moodleform {
         $courses = $DB->get_records_select_menu('course', $select, $params, 'shortname', 'id,shortname');
         $count = count($courses);
         if ($count <= 1) {
+            $courses = array(0 => '') + $courses;
             $params = array();
         } else {
             $params = array('multiple' => 'multiple', 'size' => min($count, 5));
@@ -322,7 +323,7 @@ class tool_createusers_form extends moodleform {
         // path to "filesystem" repository folder
         $name = 'folderpath';
         $label = get_string($name, $tool);
-        $options = $this->get_filesystem_folders();
+        $options = $this->get_moodledata_folders('repository');
         $mform->addElement('select', $name, $label, array(0 => '') + $options);
         $mform->setType($name, PARAM_PATH);
         $mform->setDefault($name, '');
@@ -892,8 +893,8 @@ class tool_createusers_form extends moodleform {
                     if ($enrol = $this->get_enrol($courseid, $role->id, $user->id, $time)) {
                         $this->get_user_enrolment($enrol->id, $user->id, $time);
                     }
-                    if ($data->folderpath && file_exists($CFG->dataroot.'/repository/'.$data->folderpath)) {
-                        $this->get_repository_instance_id($context, $user->id, "$user->username files", $data->folderpath, 1);
+                    if ($path = preg_replace('/[\/\\\\](\.*[\/\\\\])+/', '/', $data->folderpath)) {
+                        $this->get_repository_instance_id($context, $user->id, "$user->username files", $path, 1);
                     }
                     $url = new moodle_url('/course/view.php', array('id' => $courseid));
                     $category = html_writer::link($url, $coursename, array('target' => '_blank'));
@@ -1504,6 +1505,13 @@ class tool_createusers_form extends moodleform {
         $CFG->defaultblocks_override = ' ';
         $course = create_course($course);
 
+        if ($sortorder = $DB->get_field('course', 'MAX(sortorder)', array())) {
+            $sortorder ++;
+        } else {
+            $sortorder = 100;
+        }
+        $DB->set_field('course', 'sortorder', $sortorder, array('id' => $course->id));
+
         if (empty($course)) {
             return false;
         } else {
@@ -1512,15 +1520,15 @@ class tool_createusers_form extends moodleform {
     }
 
     /**
-     * get_filesystem_folders
+     * get_moodledata_folders
      */
-    public function get_filesystem_folders() {
+    public function get_moodledata_folders($path) {
         global $CFG;
         $folders = array();
-        $dir = $CFG->dataroot.'/repository';
+        $dir = $CFG->dataroot.'/'.$path;
         if (is_dir($dir) && ($fh = opendir($dir))) {
             while ($item = readdir($fh)) {
-                if ($item=='.' || $item=='..') {
+                if (substr($item, 0, 1)=='.') {
                     continue;
                 }
                 if (is_dir($dir.'/'.$item)) {
