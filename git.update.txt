@@ -1,0 +1,3 @@
+This file is used to limit the frequency
+of GIT updates to Moodle core scripts
+on this server. Please do not delete it.
