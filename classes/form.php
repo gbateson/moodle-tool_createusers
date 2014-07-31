@@ -930,6 +930,11 @@ class tool_createusers_form extends moodleform {
                             }
                         }
                     }
+
+                    // add course files respository
+                    if ($path = preg_replace('/[\/\\\\](\.*[\/\\\\])+/', '/', $data->folderpath)) {
+                        $this->get_repository_instance_id($context, $user->id, "$user->username files", $path, 1);
+                    }
                 }
 
                 // remove all labels, resources and activities
@@ -941,10 +946,6 @@ class tool_createusers_form extends moodleform {
                     }
                 }
 
-                // add course files respository
-                if ($path = preg_replace('/[\/\\\\](\.*[\/\\\\])+/', '/', $data->folderpath)) {
-                    $this->get_repository_instance_id($context, $user->id, "$user->username files", $path, 1);
-                }
 
                 // format link to course
                 $url = new moodle_url('/course/view.php', array('id' => $courseid));
