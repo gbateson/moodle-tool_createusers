@@ -41,7 +41,7 @@ $string['defaultlastname'] = 'LAST';
 $string['defaults'] = 'Defaults';
 $string['defaultusernameprefix'] = 'user';
 $string['doublebyte'] = 'Double-byte names';
-$string['doublebyte_help'] = 'This setting affects the names of courses created by this script.
+$string['doublebyte_help'] = 'This setting affects the names of courses created by this tool.
 
 **Yes**
 : courses will be given the same name as the teacher\'s username, except that any single-byte numbers, letters and punctuation will be converted to their double-byte equivalents.
@@ -53,7 +53,7 @@ $string['enrolcategory_help'] = 'The course cateory to which teacher courses wil
 $string['enrolcourses'] = 'Enrol in these courses';
 $string['enrolgroups'] = 'Enrol in these groups';
 $string['enrolstudents'] = 'Enrol students';
-$string['enrolstudents_help'] = 'Any users selected here will be enrolled as students in each teacher course that this scripts creates.';
+$string['enrolstudents_help'] = 'Any users selected here will be enrolled as students in each teacher course that this tool creates.';
 $string['firstnametype'] = 'First name type';
 $string['fixed'] = 'Fixed';
 $string['folderpath'] = 'Course files folder';
