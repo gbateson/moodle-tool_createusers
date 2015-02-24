@@ -287,14 +287,21 @@ class tool_createusers_form extends moodleform {
         //
         $this->add_heading($mform, 'teacherenrolments', $tool, true);
 
-        // enrol as teacher in individual courses in the following category
+        // teacher courses will be added to the following course category
         $name = 'enrolcategory';
         $label = get_string($name, $tool);
         $options = $DB->get_records_select_menu('course_categories', null, null, 'sortorder', 'id,name');
-        $mform->addElement('select', $name, $label, array(0 => '') + $options);
+        $options = array(0 => '') + $options;
+        $elements = array(
+            $mform->createElement('select', $name, '', $options),
+            $mform->createElement('text', $name.'name', '', array('size' => self::SIZE_LONGTEXT))
+        );
+        $mform->addGroup($elements, $name.'elements', $label, ' ', false);
+        $mform->addHelpButton($name.'elements', $name, $tool);
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 0);
-        $mform->addHelpButton($name, $name, $tool);
+        $mform->setType($name.'name', PARAM_TEXT);
+        $mform->setDefault($name.'name', '');
 
         // path to "filesystem" repository folder
         $name = 'folderpath';
@@ -534,6 +541,10 @@ class tool_createusers_form extends moodleform {
             }
         }
 
+        if (! empty($data->enrolcategoryname)) {
+            $data->enrolcategory = $this->get_course_categoryid($data->enrolcategoryname, $data->enrolcategory);
+        }
+
         if (! empty($data->enrolcategory)) {
             $columns[] = 'category';
         }
@@ -592,6 +603,9 @@ class tool_createusers_form extends moodleform {
                 $table .= html_writer::start_tag('tr', array('class' => 'headings', 'bgcolor' => '#eebbee'));
                 foreach ($columns as $column) {
                     switch (true) {
+                        case ($column=='newuser'):
+                            $heading = "$NEW ?";
+                            break;
                         case ($column=='id'):
                             $heading = $column;
                             break;
@@ -1121,7 +1135,7 @@ class tool_createusers_form extends moodleform {
         if ($record = $DB->get_record('user_enrolments', $params)) {
             $record->timestart = $time;
             $record->timeend = 0;
-            if ($DB->update_record('user_enrolments', $records)) {
+            if ($DB->update_record('user_enrolments', $record)) {
                 return $record;
             }
         } else {
@@ -1597,6 +1611,38 @@ class tool_createusers_form extends moodleform {
             return false;
         } else {
             return $course->id;
+        }
+    }
+
+    /**
+     * get_course_categoryid
+     *
+     * @param string  $categoryname
+     * @param integer $parentcategoryid
+     * @return mixed return id if a course category was located/created, FALSE otherwise
+     */
+    public function get_course_categoryid($categoryname, $parentcategoryid) {
+        global $CFG, $DB;
+
+        $params = array('name' => $categoryname, 'parent' => $parentcategoryid);
+        if ($category = $DB->get_record('course_categories', $params)) {
+            return $category->id;
+        }
+
+        // create new category
+        $category = (object)$params;
+
+        if (class_exists('coursecat')) {
+            $category = coursecat::create($category);
+        } else {
+            debugging('Oops, coursecat::create() not found !!');
+            die;
+        }
+
+        if (empty($category)) {
+            return false;
+        } else {
+            return $category->id;
         }
     }
 

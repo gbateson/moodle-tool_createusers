@@ -49,7 +49,10 @@ $string['doublebyte_help'] = 'This setting affects the names of courses created 
 **No**
 : courses will be given the exactly same name as the teacher\'s username';
 $string['enrolcategory'] = 'Course category';
-$string['enrolcategory_help'] = 'The course cateory to which teacher courses will be added';
+$string['enrolcategory_help'] = 'The course cateory to which teacher courses will be added.
+
+If a name is specified and a course category with that name does not already exist, one will be created within the course category, if any, selected from the drop down list.';
+$string['enrolcategoryname'] = 'Course category name';
 $string['enrolcourses'] = 'Enrol in these courses';
 $string['enrolgroups'] = 'Enrol in these groups';
 $string['enrolstudents'] = 'Enrol students';
