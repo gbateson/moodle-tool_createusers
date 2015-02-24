@@ -1633,10 +1633,17 @@ class tool_createusers_form extends moodleform {
         $category = (object)$params;
 
         if (class_exists('coursecat')) {
+            // Moodle >= 2.5
             $category = coursecat::create($category);
         } else {
-            debugging('Oops, coursecat::create() not found !!');
-            die;
+            // Moodle <= 2.4
+            $category->depth = 1;
+            $category->sortorder = 0;
+            $category->timemodified = time();
+            if ($category->id = $DB->insert_record('course_categories', $category)) {
+                fix_course_sortorder(); // Required to build course_categories.depth and .path.
+                mark_context_dirty(get_context_instance(CONTEXT_COURSECAT, $category->id));
+            }
         }
 
         if (empty($category)) {
