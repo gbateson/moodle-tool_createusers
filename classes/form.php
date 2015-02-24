@@ -1624,22 +1624,26 @@ class tool_createusers_form extends moodleform {
     public function get_course_categoryid($categoryname, $parentcategoryid) {
         global $CFG, $DB;
 
-        $params = array('name' => $categoryname, 'parent' => $parentcategoryid);
-        if ($category = $DB->get_record('course_categories', $params)) {
+        $select = 'name = ? AND parent = ?';
+        $params = array($categoryname, $parentcategoryid);
+        if ($category = $DB->get_records_select('course_categories', $select, $params)) {
+            $category = reset($category); // in case there are duplicates
             return $category->id;
         }
 
         // create new category
-        $category = (object)$params;
-
+        $category = (object)array(
+            'name'         => $categoryname,
+            'parent'       => $parentcategoryid,
+            'depth'        => 1,
+            'sortorder'    => 0,
+            'timemodified' => time()
+        );
         if (class_exists('coursecat')) {
             // Moodle >= 2.5
             $category = coursecat::create($category);
         } else {
             // Moodle <= 2.4
-            $category->depth = 1;
-            $category->sortorder = 0;
-            $category->timemodified = time();
             if ($category->id = $DB->insert_record('course_categories', $category)) {
                 fix_course_sortorder(); // Required to build course_categories.depth and .path.
                 mark_context_dirty(get_context_instance(CONTEXT_COURSECAT, $category->id));
