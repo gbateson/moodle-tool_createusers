@@ -79,11 +79,14 @@ File system repositories in each course can be enabled as follows:
   * enter name, e.g. Site files, and click button "Save"';
 $string['incrementusers'] = 'Increment';
 $string['lastnametype'] = 'Last name type';
+$string['lowercasesuffix'] = 'Lower case suffix';
+$string['lowercaseprefix'] = 'Lower case prefix';
 $string['names'] = 'Names';
 $string['pageheader'] = 'Create and enrol anonymous users';
 $string['passwords'] = 'Passwords';
 $string['passwordtype'] = 'Password type';
 $string['prefix'] = 'Prefix';
+$string['resetbadges'] = 'Reset badges';
 $string['resetcourses'] = 'Reset courses';
 $string['resetcourses_help'] = 'This setting affects labels, resources and activities in any course that is re-used as a teacher course.
 

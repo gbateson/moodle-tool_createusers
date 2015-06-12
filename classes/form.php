@@ -89,7 +89,7 @@ class tool_createusers_form extends moodleform {
 
         // username prefix
         $name = 'usernameprefix';
-        $label = get_string('prefix', $tool);
+        $label = get_string('lowercaseprefix', $tool);
         $mform->addElement('text', $name, $label, array('size' => self::SIZE_TEXT));
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, get_string('default'.$name, $tool).$dot);
@@ -127,7 +127,7 @@ class tool_createusers_form extends moodleform {
 
         // username suffix
         $name = 'usernamesuffix';
-        $label = get_string('suffix', $tool);
+        $label = get_string('lowercasesuffix', $tool);
         $mform->addElement('text', $name, $label, array('size' => self::SIZE_TEXT));
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, '');
@@ -238,6 +238,13 @@ class tool_createusers_form extends moodleform {
 
         // reset grades
         $name = 'resetgrades';
+        $label = get_string($name, $tool);
+        $mform->addElement('selectyesno', $name, $label);
+        $mform->setType($name, PARAM_INT);
+        $mform->setDefault($name, 1);
+
+        // reset badges
+        $name = 'resetbadges';
         $label = get_string($name, $tool);
         $mform->addElement('selectyesno', $name, $label);
         $mform->setType($name, PARAM_INT);
@@ -464,6 +471,25 @@ class tool_createusers_form extends moodleform {
             $js = '<script type="text/javascript" src="'.$src.'"></script>';
             $mform->addElement('static', 'form_js', '', $js);
         }
+
+        $js = '';
+        $js .= '<script type="text/javascript">'."\n";
+        $js .= "//<![CDATA[\n";
+        $js .= "function createusers_forceLowerCase(ids) {\n";
+        $js .= "    var i_max = ids.length;\n";
+        $js .= "    for (var i=0; i<i_max; i++) {\n";
+        $js .= "        var id = ids[i];\n";
+        $js .= "        var obj = document.getElementById('id_'+id);\n";
+        $js .= "        if (obj) {\n";
+        $js .= "            obj.addEventListener('change', function(){this.value = this.value.toLowerCase()});\n";
+        $js .= "        }\n";
+        $js .= "        obj = null;\n";
+        $js .= "    }\n";
+        $js .= "}\n";
+        $js .= "createusers_forceLowerCase(['usernameprefix', 'usernamesuffix']);\n";
+        $js .= "//]]>\n";
+        $js .= "</script>\n";
+        $mform->addElement('static', 'forceLowerCase', '', $js);
     }
 
     /**
@@ -678,6 +704,7 @@ class tool_createusers_form extends moodleform {
 
         // names
         $username  = $this->create_name($data, 'username',  $num);
+        $username  = self::textlib('strtolower', $username);
         $password  = $this->create_name($data, 'password',  $num, $username);
         $firstname = $this->create_name($data, 'firstname', $num, $username);
         $lastname  = $this->create_name($data, 'lastname',  $num, $username);
@@ -846,6 +873,9 @@ class tool_createusers_form extends moodleform {
 
         if ($data->resetgrades) {
             $this->reset_grades($user);
+        }
+        if ($data->resetbadges) {
+            $this->reset_badges($user);
         }
         if ($data->cancelenrolments) {
             enrol_user_delete($user); // lib/enrollib.php
@@ -1339,6 +1369,27 @@ class tool_createusers_form extends moodleform {
     }
 
     /**
+     * reset_badges
+     *
+     * @param object $user
+     * @return void
+     */
+    public function reset_badges($user) {
+        global $DB;
+
+        // remove all badges issued automatically to this $user
+        if ($badges = $DB->get_records('badge_issued', array('userid' => $user->id), 'id', 'id,userid')) {
+            list($select, $params) = $DB->get_in_or_equal(array_keys($badges));
+            $DB->delete_records_select('badge_badge_issued', "id $select", $params);
+            $DB->delete_records_select('badge_criteria_met', "issuedid $select", $params);
+        }
+
+        // remove all $user's external and manual badges
+        $DB->delete_records_select('badge_backpack', 'userid = ?', array('userid' => $user->id));
+        $DB->delete_records_select('badge_manual_award', 'userid = ?', array('userid' => $user->id));
+    }
+
+    /**
      * format_courses_and_groups
      *
      * @param  object $data
@@ -1746,5 +1797,35 @@ class tool_createusers_form extends moodleform {
                 throw new moodle_exception("Could not delete the $cm->modname (id=$cm->id) from that section (id=$sectionid)");
             }
         }
+    }
+
+    /**
+     * textlib
+     *
+     * a wrapper method to offer consistent API for textlib class
+     * in Moodle 2.0 and 2.1, $textlib is first initiated, then called
+     * in Moodle 2.2 - 2.5, we use only static methods of the "textlib" class
+     * in Moodle >= 2.6, we use only static methods of the "core_text" class
+     *
+     * @param string $method
+     * @param mixed any extra params that are required by the textlib $method
+     * @return result from the textlib $method
+     * @todo Finish documenting this function
+     */
+    static public function textlib() {
+        if (class_exists('core_text')) {
+            // Moodle >= 2.6
+            $textlib = 'core_text';
+        } else if (method_exists('textlib', 'textlib')) {
+            // Moodle 2.0 - 2.1
+            $textlib = textlib_get_instance();
+        } else {
+            // Moodle 2.2 - 2.5
+            $textlib = 'textlib';
+        }
+        $args = func_get_args();
+        $method = array_shift($args);
+        $callback = array($textlib, $method);
+        return call_user_func_array($callback, $args);
     }
 }
