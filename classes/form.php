@@ -469,7 +469,7 @@ class tool_createusers_form extends moodleform {
             // to add show/hide buttons where needed
             $src = new moodle_url('/admin/tool/createusers/classes/form.js');
             $js = '<script type="text/javascript" src="'.$src.'"></script>';
-            $mform->addElement('static', 'form_js', '', $js);
+            $mform->addElement('html', $js);
         }
 
         $js = '';
@@ -478,10 +478,14 @@ class tool_createusers_form extends moodleform {
         $js .= "function createusers_forceLowerCase(ids) {\n";
         $js .= "    var i_max = ids.length;\n";
         $js .= "    for (var i=0; i<i_max; i++) {\n";
-        $js .= "        var id = ids[i];\n";
-        $js .= "        var obj = document.getElementById('id_'+id);\n";
+        $js .= "        var id = 'id_' + ids[i];\n";
+        $js .= "        var obj = document.getElementById(id);\n";
         $js .= "        if (obj) {\n";
-        $js .= "            obj.addEventListener('change', function(){this.value = this.value.toLowerCase()});\n";
+        $js .= "            obj.addEventListener('change', function(){\n";
+        $js .= "                var r = new RegExp('[^a-zA-Z0-9._-]+', 'g');\n";
+        $js .= "                this.value = this.value.replace(r, '');\n";
+        $js .= "                this.value = this.value.toLowerCase();\n";
+        $js .= "            });\n";
         $js .= "        }\n";
         $js .= "        obj = null;\n";
         $js .= "    }\n";
@@ -489,7 +493,7 @@ class tool_createusers_form extends moodleform {
         $js .= "createusers_forceLowerCase(['usernameprefix', 'usernamesuffix']);\n";
         $js .= "//]]>\n";
         $js .= "</script>\n";
-        $mform->addElement('static', 'forceLowerCase', '', $js);
+        $mform->addElement('html', $js);
     }
 
     /**
@@ -977,7 +981,7 @@ class tool_createusers_form extends moodleform {
 
                     // add course files respository
                     if ($path = preg_replace('/[\/\\\\](\.*[\/\\\\])+/', '/', $data->folderpath)) {
-                        $this->get_repository_instance_id($context, $user->id, "$user->username files", $path, 1);
+                        $this->get_repository_instance_id($context, $user->id, "$user->username files", $path, 1, true);
                     }
                 }
 
@@ -1738,9 +1742,11 @@ class tool_createusers_form extends moodleform {
      * @param string   $name
      * @param string   $path
      * @param integer  $relativefiles
+     * @param boolean  $deleteothers if TRUE delete other filesystem instances in this context
      * @return integer id from repository_instances table
      */
-    public function get_repository_instance_id($context, $userid, $name, $path, $relativefiles) {
+    public function get_repository_instance_id($context, $userid, $name, $path, $relativefiles, $deleteothers=false) {
+        $instanceid = 0;
         $type = 'filesystem';
         $params = array('type' => $type, 'currentcontext' => $context, 'context' => array($context), 'userid' => $userid);
         if ($instances = repository::get_instances($params)) {
@@ -1748,12 +1754,17 @@ class tool_createusers_form extends moodleform {
                 if ($instance->get_option('fs_path')==$path) {
                     $params = array('name' => $name, 'fs_path' => $path, 'relativefiles' => $relativefiles);
                     $instance->set_option($params);
-                    return $instance->id;
+                    $instanceid = $instance->id;
+                } else if ($deleteothers) {
+                    $instance->delete();
                 }
             }
         }
-        $params = array('name' => $name, 'fs_path' => $path, 'relativefiles' => $relativefiles);
-        return repository::static_function($type, 'create', $type, $userid, $context, $params);
+        if ($instanceid==0) {
+            $params = array('name' => $name, 'fs_path' => $path, 'relativefiles' => $relativefiles);
+            $instanceid = repository::static_function($type, 'create', $type, $userid, $context, $params);
+        }
+        return $instanceid;
     }
 
     /**
