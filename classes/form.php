@@ -74,6 +74,9 @@ class tool_createusers_form extends moodleform {
         $tool = 'tool_createusers';
         $dot = get_string('stringseparator', $tool);
 
+        $username_chars = '/^[a-z0-9._-]+$/';
+        $username_error = get_string('error_usernamelowercase', $tool);
+
         // ==================================
         // usernames
         // ==================================
@@ -87,11 +90,29 @@ class tool_createusers_form extends moodleform {
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 20);
 
+        // reuse usernames
+        $name = 'oldusernames';
+        $label = get_string('oldusernames', $tool);
+        $elements = array();
+        $elements[] = $mform->createElement('static', '', '', get_string('include', $tool));
+        $elements[] = $mform->createElement('text', $name.'include', get_string('include', $tool), array('size' => self::SIZE_TEXT));
+        $elements[] = $mform->createElement('static', '', '', html_writer::empty_tag('br'));
+        $elements[] = $mform->createElement('static', '', '', get_string('exclude', $tool));
+        $elements[] = $mform->createElement('text', $name.'exclude', get_string('exclude', $tool), array('size' => self::SIZE_TEXT));
+        $mform->addElement('group', $name, $label, $elements, ' ', false);
+        $mform->setType($name.'include', PARAM_TEXT);
+        $mform->setType($name.'exclude', PARAM_TEXT);
+        $mform->addGroupRule($name, array(
+            $name.'include' => array(array($username_error, 'regex', $username_chars)),
+            $name.'exclude' => array(array($username_error, 'regex', $username_chars))
+        ));
+
         // username prefix
         $name = 'usernameprefix';
         $label = get_string('lowercaseprefix', $tool);
         $mform->addElement('text', $name, $label, array('size' => self::SIZE_TEXT));
         $mform->setType($name, PARAM_TEXT);
+        $mform->addRule($name, $username_error, 'regex', $username_chars);
         $mform->setDefault($name, get_string('default'.$name, $tool).$dot);
 
         // username numeric type
@@ -130,6 +151,7 @@ class tool_createusers_form extends moodleform {
         $label = get_string('lowercasesuffix', $tool);
         $mform->addElement('text', $name, $label, array('size' => self::SIZE_TEXT));
         $mform->setType($name, PARAM_TEXT);
+        $mform->addRule($name, $username_error, 'regex', $username_chars);
         $mform->setDefault($name, '');
 
         // ==================================
@@ -472,6 +494,8 @@ class tool_createusers_form extends moodleform {
             $mform->addElement('html', $js);
         }
 
+        // we do client side validation on these fields ourselves
+        // but it should be possible using "addRule(..., 'client')"
         $js = '';
         $js .= '<script type="text/javascript">'."\n";
         $js .= "//<![CDATA[\n";
@@ -490,7 +514,7 @@ class tool_createusers_form extends moodleform {
         $js .= "        obj = null;\n";
         $js .= "    }\n";
         $js .= "}\n";
-        $js .= "createusers_forceLowerCase(['usernameprefix', 'usernamesuffix']);\n";
+        //$js .= "createusers_forceLowerCase(['oldusernamesinclude', 'oldusernamesexclude', 'usernameprefix', 'usernamesuffix']);\n";
         $js .= "//]]>\n";
         $js .= "</script>\n";
         $mform->addElement('html', $js);
@@ -985,11 +1009,25 @@ class tool_createusers_form extends moodleform {
                     }
                 }
 
-                // remove all labels, resources and activities
+                // remove everything from course
                 if ($data->resetcourses) {
-                    if ($cms = $DB->get_records('course_modules', array('course' => $courseid), 'id,course')) {
+
+                    // remove all labels, resources and activities
+                    if ($cms = $DB->get_records('course_modules', array('course' => $courseid), '', 'id,course')) {
                         foreach ($cms as $cm) {
                             $this->remove_coursemodule($cm->id);
+                        }
+                    }
+
+                    // remove all blocks
+                    $context = $this->get_context(CONTEXT_COURSE, $courseid);
+                    blocks_delete_all_for_context($context->id);
+
+                    // remove all badges
+                    if ($badges = $DB->get_records('badge', array('courseid' => $courseid), '', 'id,courseid')) {
+                        foreach ($badges as $badge) {
+                            $badge = new badge($badge->id);
+                            $badge->delete(false);
                         }
                     }
                 }
@@ -1388,9 +1426,11 @@ class tool_createusers_form extends moodleform {
             $DB->delete_records_select('badge_criteria_met', "issuedid $select", $params);
         }
 
-        // remove all $user's external and manual badges
-        $DB->delete_records_select('badge_backpack', 'userid = ?', array('userid' => $user->id));
-        $DB->delete_records_select('badge_manual_award', 'userid = ?', array('userid' => $user->id));
+        // remove all external and manual badges awarded to, or by, this $user
+        $params = array($user->id);
+        $DB->delete_records_select('badge_backpack', 'userid = ?', $params);
+        $DB->delete_records_select('badge_manual_award', 'issuerid = ?', $params);
+        $DB->delete_records_select('badge_manual_award', 'recipientid = ?', $params);
     }
 
     /**
@@ -1655,6 +1695,10 @@ class tool_createusers_form extends moodleform {
         $CFG->defaultblocks_override = ' ';
         $course = create_course($course);
 
+        if (empty($course)) {
+            return false; // shouldn't happen !!
+        }
+
         if ($sortorder = $DB->get_field('course', 'MAX(sortorder)', array())) {
             $sortorder ++;
         } else {
@@ -1662,11 +1706,7 @@ class tool_createusers_form extends moodleform {
         }
         $DB->set_field('course', 'sortorder', $sortorder, array('id' => $course->id));
 
-        if (empty($course)) {
-            return false;
-        } else {
-            return $course->id;
-        }
+        return $course->id;
     }
 
     /**
