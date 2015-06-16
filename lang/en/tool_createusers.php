@@ -59,6 +59,7 @@ $string['enrolstudents'] = 'Enrol students';
 $string['enrolstudents_help'] = 'Any users selected here will be enrolled as students in each teacher course that this tool creates.';
 $string['error_usernamelowercase'] = 'Usernames can contain only lower case characters (a-z), numeric digits (0-9), hyphens, userscores and dots (- _ .)';
 $string['exclude'] = 'Exclude';
+$string['excludetype'] = 'SQL exclude type';
 $string['firstnametype'] = 'First name type';
 $string['fixed'] = 'Fixed';
 $string['folderpath'] = 'Course files folder';
@@ -80,6 +81,7 @@ File system repositories in each course can be enabled as follows:
   * click button "Create a repository instance"
   * enter name, e.g. Site files, and click button "Save"';
 $string['include'] = 'Include';
+$string['includetype'] = 'SQL include type';
 $string['incrementusers'] = 'Increment';
 $string['lastnametype'] = 'Last name type';
 $string['lowercasesuffix'] = 'Lower case suffix';
@@ -106,6 +108,8 @@ $string['showalternatename'] = 'Show alternate name';
 $string['shownewuser'] = 'Show new user';
 $string['showuserid'] = 'Show user id';
 $string['shufflerandom'] = 'Shuffle';
+$string['sqllike'] = 'LIKE';
+$string['sqlregex'] = 'REGEX';
 $string['startusers'] = 'Start sequence';
 $string['stringseparator'] = '.';
 $string['studentcourses'] = 'Student course(s)';

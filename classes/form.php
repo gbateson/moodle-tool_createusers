@@ -44,15 +44,18 @@ class tool_createusers_form extends moodleform {
     var $lowercase   = null;
     var $uppercase   = null;
 
+    const SIZE_INT      = 5;
+    const SIZE_TEXT     = 10;
+    const SIZE_LONGTEXT = 20;
+
+    const SQL_LIKE      = 0;
+    const SQL_REGEX     = 1;
+
     const TYPE_FIXED    = 1;
     const TYPE_RANDOM   = 2;
     const TYPE_SEQUENCE = 3;
     const TYPE_USERID   = 4;
     const TYPE_USERNAME = 5;
-
-    const SIZE_INT      = 5;
-    const SIZE_TEXT     = 10;
-    const SIZE_LONGTEXT = 20;
 
     /**
      * constructor
@@ -93,19 +96,33 @@ class tool_createusers_form extends moodleform {
         // reuse usernames
         $name = 'oldusernames';
         $label = get_string('oldusernames', $tool);
+        $options = array();
+        if ($DB->sql_regex_supported()) {
+            $options[self::SQL_REGEX] = get_string('sqlregex', $tool);
+            $default = self::SQL_REGEX;
+        } else {
+            $default = self::SQL_LIKE;
+        }
+        $options[self::SQL_LIKE] = get_string('sqllike', $tool);
         $elements = array();
         $elements[] = $mform->createElement('static', '', '', get_string('include', $tool));
+        $elements[] = $mform->createElement('select', $name.'includetype', get_string('includetype', $tool), $options);
         $elements[] = $mform->createElement('text', $name.'include', get_string('include', $tool), array('size' => self::SIZE_TEXT));
         $elements[] = $mform->createElement('static', '', '', html_writer::empty_tag('br'));
         $elements[] = $mform->createElement('static', '', '', get_string('exclude', $tool));
+        $elements[] = $mform->createElement('select', $name.'excludetype', get_string('excludetype', $tool), $options);
         $elements[] = $mform->createElement('text', $name.'exclude', get_string('exclude', $tool), array('size' => self::SIZE_TEXT));
         $mform->addElement('group', $name, $label, $elements, ' ', false);
         $mform->setType($name.'include', PARAM_TEXT);
         $mform->setType($name.'exclude', PARAM_TEXT);
-        $mform->addGroupRule($name, array(
-            $name.'include' => array(array($username_error, 'regex', $username_chars)),
-            $name.'exclude' => array(array($username_error, 'regex', $username_chars))
-        ));
+        $mform->setType($name.'includetype', PARAM_INT);
+        $mform->setType($name.'excludetype', PARAM_INT);
+        $mform->setDefault($name.'includetype', $default);
+        $mform->setDefault($name.'excludetype', $default);
+        //$mform->addGroupRule($name, array(
+        //    $name.'include' => array(array($username_error, 'regex', $username_chars)),
+        //    $name.'exclude' => array(array($username_error, 'regex', $username_chars))
+        //));
 
         // username prefix
         $name = 'usernameprefix';
@@ -514,7 +531,7 @@ class tool_createusers_form extends moodleform {
         $js .= "        obj = null;\n";
         $js .= "    }\n";
         $js .= "}\n";
-        //$js .= "createusers_forceLowerCase(['oldusernamesinclude', 'oldusernamesexclude', 'usernameprefix', 'usernamesuffix']);\n";
+        $js .= "createusers_forceLowerCase(['usernameprefix', 'usernamesuffix']);\n";
         $js .= "//]]>\n";
         $js .= "</script>\n";
         $mform->addElement('html', $js);
@@ -570,6 +587,7 @@ class tool_createusers_form extends moodleform {
 
         $OLD = '';
         $NEW = get_string('new');
+        $USED = '--';
 
         $columns = array();
 
@@ -601,6 +619,55 @@ class tool_createusers_form extends moodleform {
 
         if (! empty($data->enrolcategory)) {
             $columns[] = 'category';
+        }
+
+        // disallow REGEX if DB does not support them
+        if (! $DB->sql_regex_supported()) {
+            if (isset($data->oldusernamesinclude)) {
+                if ($data->oldusernamesincludetype==self::SQL_REGEX) {
+                    $data->oldusernamesinclude = '';
+                }
+            }
+            if (! empty($data->oldusernamesexclude)) {
+                if ($data->oldusernamesexcludetype==self::SQL_REGEX) {
+                    $data->oldusernamesexclude = '';
+                }
+            }
+        }
+
+        $userids = array();
+        if (! empty($data->oldusernamesinclude)) {
+
+            // do not alter admin users or current user
+            $users = get_admins();
+            foreach ($users as $user) {
+                $users[$user->id] = $user->username;
+            }
+            $users[$USER->id] = $USER->username;
+
+            list($select, $params) = $DB->get_in_or_equal($users);
+            $select = "NOT (username $select)";
+
+            // add included users, but ignore excluded users
+            if ($data->oldusernamesincludetype==self::SQL_REGEX) {
+                $select .= ' AND username '.$DB->sql_regex(true).' ? ';
+                $params[] = $data->oldusernamesinclude;
+                if (! empty($data->oldusernamesexclude)) {
+                    $select .= ' AND username '.$DB->sql_regex(false).' ?';
+                    $params[] = $data->oldusernamesexclude;
+                }
+            } else {
+                $select .= ' AND '.$DB->sql_like('username', '?');
+                $params[] = $data->oldusernamesinclude;
+                if (! empty($data->oldusernamesexclude)) {
+                    $select .= ' AND '.$DB->sql_like('username', '?', false, false, true);
+                    $params[] = $data->oldusernamesexclude;
+                }
+            }
+            if ($users = $DB->get_records_select('user', $select, $params, 'id', 'id, username')) {
+                $userids = array_keys($users);
+            }
+            unset($users, $user, $select, $params);
         }
 
         $count = max($data->countusers, 0);
@@ -642,6 +709,10 @@ class tool_createusers_form extends moodleform {
             if ($user->id) {
                 $DB->update_record('user', $user);
                 $user->newuser = $OLD;
+            } else if (count($userids)) {
+                $user->id = array_shift($userids);
+                $user->newuser = $DB->get_field('user', 'username', array('id' => $user->id));
+                $DB->update_record('user', $user);
             } else {
                 unset($user->id);
                 $user->id = $DB->insert_record('user', $user);
