@@ -410,7 +410,13 @@ class tool_createusers_form extends moodleform {
         $name = 'timezone';
         $label = get_string($name);
         $default = '99';
-        $zones = get_list_of_timezones();
+        if (class_exists('core_date')) {
+            // Moodle >= 2.9
+            $zones = core_date::get_list_of_timezones();
+        } else {
+            // Moodle <= 2.8
+            $zones = get_list_of_timezones();
+        }
         $zones[$default] = get_string('serverlocaltime');
         if (empty($CFG->forcetimezone) || $CFG->forcetimezone==$default) {
             $mform->addElement('select', $name, $label, $zones);
