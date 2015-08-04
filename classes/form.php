@@ -1499,7 +1499,7 @@ class tool_createusers_form extends moodleform {
         // remove all badges issued automatically to this $user
         if ($badges = $DB->get_records('badge_issued', array('userid' => $user->id), 'id', 'id,userid')) {
             list($select, $params) = $DB->get_in_or_equal(array_keys($badges));
-            $DB->delete_records_select('badge_badge_issued', "id $select", $params);
+            $DB->delete_records_select('badge_issued', "id $select", $params);
             $DB->delete_records_select('badge_criteria_met', "issuedid $select", $params);
         }
 
