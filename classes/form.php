@@ -1360,48 +1360,121 @@ class tool_createusers_form extends moodleform {
      */
     public function reset_grades($user) {
         global $DB;
+        $instanceids = array();
 
         // get $user's grades
-        if (! $grades = $DB->get_records_menu('grade_grades', array('userid' => $user->id), null, 'id,itemid')) {
-            return false;
+        if ($grades = $DB->get_records_menu('grade_grades', array('userid' => $user->id), null, 'id,itemid')) {
+
+            // remove all $user's grades (from any course)
+            list($select, $params) = $DB->get_in_or_equal(array_keys($grades));
+            $DB->delete_records_select('grade_grades', "id $select", $params);
+
+            // select all "mod" grade items for this user
+            list($select, $params) = $DB->get_in_or_equal(array_values($grades));
+            $select .= ' AND itemtype = ?';
+            $params[] = 'mod';
+            if (! $items = $DB->get_records_select('grade_items', "id $select", $params)) {
+                return false;
+            }
+
+            // remove $user's grade for each grade item
+            foreach ($items as $item) {
+                if (! $mod = $item->itemmodule) {
+                    continue; // empty module name ?!
+                }
+                $params = array('id' => $item->iteminstance);
+                if (! $instance = $DB->get_record($mod, $params)) {
+                    continue; // invalid instance id ?!
+                }
+                $params = array('module' => $mod, 'instance' => $instance->id);
+                if (! $cm = $DB->get_record('course_modules', $params)) {
+                    continue; // no course_module ?!
+                }
+
+                // fields required by "xxx_update_grades"
+                $instance->cmidnumber = $cm->idnumber;
+                $instance->courseid   = $cm->course;
+
+                $method = 'reset_grades_'.$mod;
+                if (method_exists($this, $method)) {
+                    $this->$method($instance, $user);
+                } else {
+                    // remove any info about this user in this mod's tables
+                    $this->reset_grades_mod($mod, $instance, $user);
+                }
+
+                if (empty($instanceids[$mod])) {
+                    $instanceids[$mod] = array();
+                }
+                $instanceids[$mod][$instance->id] = true;
+            }
         }
 
-        // remove all $user's grades
-        list($select, $params) = $DB->get_in_or_equal(array_keys($grades));
-        $DB->delete_records_select('grade_grades', "id $select", $params);
+        // reset other mods with no grade item
+        $this->reset_grades_mods($user, $instanceids);
+    }
 
-        // select all "mod" grade items for this user
-        list($select, $params) = $DB->get_in_or_equal(array_values($grades));
-        $select .= ' AND itemtype = ?';
-        $params[] = 'mod';
-        if (! $items = $DB->get_records_select('grade_items', "id $select", $params)) {
-            return false;
+    /**
+     * get_modnames
+     *
+     * @return array of mod names
+     */
+    public function get_modnames() {
+        global $DB;
+        static $modnames = null;
+        if ($modnames===null) {
+            $modnames = $DB->get_records_menu('modules', array(), 'name', 'id,name');
+        }
+        return $modnames;
+    }
+
+    /**
+     * get_mod_tablenames_with_userid
+     *
+     * @param string $modname
+     * @return array of mod names
+     */
+    public function get_mod_tablenames_with_userid($modname='') {
+        global $DB;
+
+        static $tables = null;
+        if ($tables===null) {
+            $tables = $this->get_modnames();
+            $tables = '/^(?:'.implode('|', $tables).')_/';
+            $tables = preg_grep($tables, $DB->get_tables());
+            foreach ($tables as $t => $table) {
+                $columns = $DB->get_columns($table);
+                if (! array_key_exists('userid', $columns)) {
+                    unset($tables[$t]);
+                }
+            }
         }
 
-        // remove $user's grade for each grade item
-        foreach ($items as $item) {
-            if (! $mod = $item->itemmodule) {
-                continue; // empty module name ?!
-            }
-            $params = array('id' => $item->iteminstance);
-            if (! $instance = $DB->get_record($mod, $params)) {
-                continue; // invalid instance id ?!
-            }
-            $params = array('module' => $mod, 'instance' => $instance->id);
-            if (! $cm = $DB->get_record('course_modules', $params)) {
-                continue; // no course_module ?!
-            }
+        if ($modname=='') {
+            return $tables;
+        } else {
+            return preg_grep('/^'.$modname.'_/', $tables);
+        }
+    }
 
-            // fields required by "xxx_update_grades"
-            $instance->cmidnumber = $cm->idnumber;
-            $instance->courseid   = $cm->course;
-
-            $method = 'reset_grades_'.$mod;
-            if (method_exists($this, $method)) {
-                $this->$method($instance, $user);
-            } else {
-                // remove any info about this user in this mod's tables
-                $this->reset_grades_mod($mod, $instance, $user);
+    /**
+     * reset_grades_mods
+     *
+     * @param object $user
+     * @param array  $instanceids that have already had grades reset
+     * @return void
+     */
+    public function reset_grades_mods($user, $instanceids) {
+        global $DB;
+        $mods = $this->get_modnames();
+        foreach ($mods as $mod) {
+            if ($instances = $DB->get_records($mod)) {
+                foreach ($instances as $instance) {
+                    if (empty($instanceids[$mod][$instance->id])) {
+                        $this->reset_grades_mod($mod, $instance, $user);
+                        $instanceids[$mod][$instance->id] = true;
+                    }
+                }
             }
         }
     }
@@ -1417,19 +1490,9 @@ class tool_createusers_form extends moodleform {
     public function reset_grades_mod($mod, $instance, $user) {
         global $CFG, $DB;
 
-        if (! $tables = $DB->get_tables() ) {
-            return false; // shoudln't happen !!
-        }
-
+        $tables = $this->get_mod_tablenames_with_userid($mod);
         foreach ($tables as $table) {
-            if (strpos($table, $mod.'_')===0) {
-                if ($columns = $DB->get_columns($table)) {
-                    if (array_key_exists('userid', $columns)) {
-                        $params = array('userid' => $user->id);
-                        $DB->delete_records($table, $params);
-                    }
-                }
-            }
+            $DB->delete_records($table, array('userid' => $user->id));
         }
 
         $file = $CFG->dirroot.'/mod/$mod/lib.php';
