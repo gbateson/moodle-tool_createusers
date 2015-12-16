@@ -377,7 +377,7 @@ class tool_createusers_form extends moodleform {
         // enrol the following students in each teacher's course
         $name = 'enrolstudents';
         $label = get_string($name, $tool);
-        $select = $DB->sql_like('username', '?').' && deleted = ?';
+        $select = $DB->sql_like('username', '?').' AND deleted = ?';
         $params = array('%guest%', 0);
         if ($users = $DB->get_records_select('user', $select, $params, 'id', $this->get_userfields())) {
             foreach ($users as $userid => $user) {
