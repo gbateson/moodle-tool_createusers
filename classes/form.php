@@ -64,7 +64,11 @@ class tool_createusers_form extends moodleform {
         $this->numeric   = array_flip(str_split('23456789', 1));
         $this->lowercase = array_flip(str_split('abdeghjmnpqrstuvyz', 1));
         $this->uppercase = array_flip(str_split('ABDEGHJLMNPQRSTUVWXYZ', 1));
-        parent::moodleform($action, $customdata, $method, $target, $attributes, $editable);
+        if (method_exists('moodleform', '__construct')) {
+            parent::__construct($action, $customdata, $method, $target, $attributes, $editable);
+        } else {
+            parent::moodleform($action, $customdata, $method, $target, $attributes, $editable);
+        }
     }
 
     /**
