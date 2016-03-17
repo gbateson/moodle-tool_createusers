@@ -60,7 +60,7 @@ class tool_createusers_form extends moodleform {
     /**
      * constructor
      */
-    public function tool_createusers_form($action=null, $customdata=null, $method='post', $target='', $attributes=null, $editable=true) {
+    public function __construct($action=null, $customdata=null, $method='post', $target='', $attributes=null, $editable=true) {
         $this->numeric   = array_flip(str_split('23456789', 1));
         $this->lowercase = array_flip(str_split('abdeghjmnpqrstuvyz', 1));
         $this->uppercase = array_flip(str_split('ABDEGHJLMNPQRSTUVWXYZ', 1));
