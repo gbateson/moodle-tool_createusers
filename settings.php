@@ -25,7 +25,5 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-if ($hassiteconfig) {
-    $ADMIN->add('development', new admin_externalpage('toolcreateusers', get_string('pluginname', 'tool_createusers'),
-                                                      $CFG->wwwroot.'/'.$CFG->admin.'/tool/createusers/index.php'));
-}
+$ADMIN->add('accounts', new admin_externalpage('toolcreateusers', get_string('pluginname', 'tool_createusers'),
+                        $CFG->wwwroot.'/'.$CFG->admin.'/tool/createusers/index.php', 'moodle/user:create'));

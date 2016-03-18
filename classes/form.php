@@ -1032,6 +1032,9 @@ class tool_createusers_form extends moodleform {
                     $this->get_user_enrolment($enrol->id, $user->id, $time);
                 }
             }
+            if (function_exists('groups_cache_groupdata')) {
+                groups_cache_groupdata($courseid); // Moodle >= 3.0
+            }
         }
 
         $category = '';
