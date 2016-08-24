@@ -24,10 +24,10 @@
  */
 
 /** Prevent direct access to this script */
-defined('MOODLE_INTERNAL') || die;
+defined('MOODLE_INTERNAL') || die();
 
 /** Include required files */
-require_once("$CFG->libdir/formslib.php");
+require_once($CFG->dirroot.'/lib/formslib.php');
 
 /**
  * tool_createusers_form
