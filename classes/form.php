@@ -40,9 +40,17 @@ require_once($CFG->dirroot.'/lib/formslib.php');
  */
 class tool_createusers_form extends moodleform {
 
-    var $numeric     = null;
-    var $lowercase   = null;
-    var $uppercase   = null;
+    protected $numeric   = null;
+    protected $lowercase = null;
+    protected $uppercase = null;
+
+    // should we allow student/teacher enolments
+    protected $allow_student_enrolments = true;
+    protected $allow_teacher_enrolments = true;
+
+    // we can restrict the list of student-enrollable courses
+    // to a single course (usually the current course)
+    protected $forcecourseid = 0;
 
     const SIZE_INT      = 5;
     const SIZE_TEXT     = 10;
@@ -277,131 +285,145 @@ class tool_createusers_form extends moodleform {
         // student enrolments
         // ==================================
         //
-        $this->add_heading($mform, 'studentenrolments', $tool, true);
+        if ($this->allow_student_enrolments) {
+            $this->add_heading($mform, 'studentenrolments', $tool, true);
 
-        // reset grades
-        $name = 'resetgrades';
-        $label = get_string($name, $tool);
-        $mform->addElement('selectyesno', $name, $label);
-        $mform->setType($name, PARAM_INT);
-        $mform->setDefault($name, 1);
+            // reset grades
+            $name = 'resetgrades';
+            $label = get_string($name, $tool);
+            $mform->addElement('selectyesno', $name, $label);
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 1);
 
-        // reset badges
-        $name = 'resetbadges';
-        $label = get_string($name, $tool);
-        $mform->addElement('selectyesno', $name, $label);
-        $mform->setType($name, PARAM_INT);
-        $mform->setDefault($name, 1);
+            // reset badges
+            $name = 'resetbadges';
+            $label = get_string($name, $tool);
+            $mform->addElement('selectyesno', $name, $label);
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 1);
 
-        // cancel role assignments
-        $name = 'cancelroles';
-        $label = get_string($name, $tool);
-        $mform->addElement('selectyesno', $name, $label);
-        $mform->setType($name, PARAM_INT);
-        $mform->setDefault($name, 1);
+            // cancel role assignments
+            $name = 'cancelroles';
+            $label = get_string($name, $tool);
+            $mform->addElement('selectyesno', $name, $label);
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 1);
 
-        // cancel current enrolments
-        $name = 'cancelenrolments';
-        $label = get_string($name, $tool);
-        $mform->addElement('selectyesno', $name, $label);
-        $mform->setType($name, PARAM_INT);
-        $mform->setDefault($name, 1);
+            // cancel current enrolments
+            $name = 'cancelenrolments';
+            $label = get_string($name, $tool);
+            $mform->addElement('selectyesno', $name, $label);
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 1);
 
-        // enrol as student in the following courses
-        $name = 'enrolcourses';
-        $label = get_string($name, $tool);
-        $select = 'id <> ?';
-        $params = array(SITEID);
-        $courses = $DB->get_records_select_menu('course', $select, $params, 'shortname', 'id,shortname');
-        $count = count($courses);
-        if ($count <= 1) {
-            $courses = array(0 => '') + $courses;
-            $params = array();
-        } else {
-            $params = array('multiple' => 'multiple', 'size' => min($count, 5));
+            // enrol as student in the following courses
+            $name = 'enrolcourses';
+            $label = get_string($name, $tool);
+            if (empty($this->forcecourseid)) {
+                $select = 'id != ?';
+                $params = array(SITEID);
+            } else {
+                $select = 'id = ?';
+                $params = array($this->forcecourseid);
+            }
+            $courses = $DB->get_records_select_menu('course', $select, $params, 'shortname', 'id,shortname');
+            $count = count($courses);
+            if ($count <= 1) {
+                if ($this->forcecourseid==0) {
+                    $courses = array(0 => '') + $courses;
+                }
+                $params = array();
+            } else {
+                $params = array('multiple' => 'multiple', 'size' => min($count, 5));
+            }
+            foreach ($courses as $courseid => $coursename) {
+                $courses[$courseid] = format_string($coursename);
+            }
+            $mform->addElement('select', $name, $label, $courses, $params);
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 0);
+
+            // enrol in the following groups
+            $name = 'enrolgroups';
+            $label = get_string($name, $tool);
+            $mform->addElement('text', $name, $label, array('size' => self::SIZE_LONGTEXT));
+            $mform->setType($name, PARAM_TEXT);
+            $mform->setDefault($name, '');
         }
-        $mform->addElement('select', $name, $label, $courses, $params);
-        $mform->setType($name, PARAM_INT);
-        $mform->setDefault($name, 0);
-
-        // enrol in the following groups
-        $name = 'enrolgroups';
-        $label = get_string($name, $tool);
-        $mform->addElement('text', $name, $label, array('size' => self::SIZE_LONGTEXT));
-        $mform->setType($name, PARAM_TEXT);
-        $mform->setDefault($name, '');
 
         // ==================================
         // teacher enrolments
         // ==================================
         //
-        $this->add_heading($mform, 'teacherenrolments', $tool, true);
+        if ($this->allow_teacher_enrolments) {
+            $this->add_heading($mform, 'teacherenrolments', $tool, true);
 
-        // teacher courses will be added to the following course category
-        $name = 'enrolcategory';
-        $label = get_string($name, $tool);
-        $options = $DB->get_records_select_menu('course_categories', null, null, 'sortorder', 'id,name');
-        $options = array(0 => '') + $options;
-        $elements = array(
-            $mform->createElement('select', $name, '', $options),
-            $mform->createElement('text', $name.'name', '', array('size' => self::SIZE_LONGTEXT))
-        );
-        $mform->addGroup($elements, $name.'elements', $label, ' ', false);
-        $mform->addHelpButton($name.'elements', $name, $tool);
-        $mform->setType($name, PARAM_INT);
-        $mform->setDefault($name, 0);
-        $mform->setType($name.'name', PARAM_TEXT);
-        $mform->setDefault($name.'name', '');
+            // teacher courses will be added to the following course category
+            $name = 'enrolcategory';
+            $label = get_string($name, $tool);
+            $options = $DB->get_records_select_menu('course_categories', null, null, 'sortorder', 'id,name');
+            $options = array(0 => '') + $options;
+            $elements = array(
+                $mform->createElement('select', $name, '', $options),
+                $mform->createElement('text', $name.'name', '', array('size' => self::SIZE_LONGTEXT))
+            );
+            $mform->addGroup($elements, $name.'elements', $label, ' ', false);
+            $mform->addHelpButton($name.'elements', $name, $tool);
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 0);
+            $mform->setType($name.'name', PARAM_TEXT);
+            $mform->setDefault($name.'name', '');
 
-        // path to "filesystem" repository folder
-        $name = 'folderpath';
-        $label = get_string($name, $tool);
-        $options = $this->get_moodledata_folders('repository');
-        $mform->addElement('select', $name, $label, array(0 => '') + $options);
-        $mform->setType($name, PARAM_PATH);
-        $mform->setDefault($name, '');
-        $mform->addHelpButton($name, $name, $tool);
+            // path to "filesystem" repository folder
+            $name = 'folderpath';
+            $label = get_string($name, $tool);
+            $options = $this->get_moodledata_folders('repository');
+            $mform->addElement('select', $name, $label, array(0 => '') + $options);
+            $mform->setType($name, PARAM_PATH);
+            $mform->setDefault($name, '');
+            $mform->addHelpButton($name, $name, $tool);
 
-        // use double-byte names
-        $name = 'doublebyte';
-        $label = get_string($name, $tool);
-        $mform->addElement('selectyesno', $name, $label);
-        $mform->setType($name, PARAM_INT);
-        $mform->setDefault($name, 0);
-        $mform->addHelpButton($name, $name, $tool);
+            // use double-byte names
+            $name = 'doublebyte';
+            $label = get_string($name, $tool);
+            $mform->addElement('selectyesno', $name, $label);
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 0);
+            $mform->addHelpButton($name, $name, $tool);
 
-        // reset courses i.e. remove course modules
-        $name = 'resetcourses';
-        $label = get_string($name, $tool);
-        $mform->addElement('selectyesno', $name, $label);
-        $mform->setType($name, PARAM_INT);
-        $mform->setDefault($name, 1);
-        $mform->addHelpButton($name, $name, $tool);
+            // reset courses i.e. remove course modules
+            $name = 'resetcourses';
+            $label = get_string($name, $tool);
+            $mform->addElement('selectyesno', $name, $label);
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 1);
+            $mform->addHelpButton($name, $name, $tool);
 
-        // enrol the following students in each teacher's course
-        $name = 'enrolstudents';
-        $label = get_string($name, $tool);
-        $select = $DB->sql_like('username', '?').' AND deleted = ?';
-        $params = array('%guest%', 0);
-        if ($users = $DB->get_records_select('user', $select, $params, 'id', $this->get_userfields())) {
-            foreach ($users as $userid => $user) {
-                $users[$userid] = fullname($user);
+            // enrol the following students in each teacher's course
+            $name = 'allow_student_enrolments';
+            $label = get_string($name, $tool);
+            $select = $DB->sql_like('username', '?').' AND deleted = ?';
+            $params = array('%guest%', 0);
+            if ($users = $DB->get_records_select('user', $select, $params, 'id', $this->get_userfields())) {
+                foreach ($users as $userid => $user) {
+                    $users[$userid] = fullname($user);
+                }
+                $count = count($users);
+            } else {
+                $users = array();
+                $count = 0;
             }
-            $count = count($users);
-        } else {
-            $users = array();
-            $count = 0;
+            if ($count <= 1) {
+                $users = array(0 => '') + $users;
+                $params = array();
+            } else {
+                $params = array('multiple' => 'multiple', 'size' => min($count, 5));
+            }
+            $mform->addElement('select', $name, $label, $users, $params);
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 0);
+            $mform->addHelpButton($name, $name, $tool);
         }
-        if ($count <= 1) {
-            $users = array(0 => '') + $users;
-            $params = array();
-        } else {
-            $params = array('multiple' => 'multiple', 'size' => min($count, 5));
-        }
-        $mform->addElement('select', $name, $label, $users, $params);
-        $mform->setType($name, PARAM_INT);
-        $mform->setDefault($name, 0);
-        $mform->addHelpButton($name, $name, $tool);
 
         // ==================================
         // defaults
@@ -734,7 +756,7 @@ class tool_createusers_form extends moodleform {
 
             // print headings (first time only)
             if ($table=='') {
-                $table .= html_writer::start_tag('table', array('class' => 'users', 'border' => 1, 'cellspacing' => 4, 'cellpadding' => '4'));
+                $table .= html_writer::start_tag('table', array('class' => 'createusers', 'border' => 1, 'cellspacing' => 4, 'cellpadding' => '4'));
                 $table .= html_writer::start_tag('tr', array('class' => 'headings', 'bgcolor' => '#eebbee'));
                 foreach ($columns as $column) {
                     switch (true) {
@@ -994,6 +1016,13 @@ class tool_createusers_form extends moodleform {
             $DB->delete_records('groups_members', array('userid' => $user->id));
         }
 
+        if ($this->allow_student_enrolments==false) {
+            $data->enrolgroups = null;
+        }
+        if ($this->allow_teacher_enrolments==false) {
+            $data->enrolcategory = null;
+        }
+
         if (empty($data->enrolcourses)) {
             $courseids = array();
         } else if (is_array($data->enrolcourses)) {
@@ -1013,7 +1042,7 @@ class tool_createusers_form extends moodleform {
 
         foreach ($courseids as $courseid) {
             if ($role = $this->get_role_record('student')) {
-                if ($context = $this->get_context(CONTEXT_COURSE, $courseid)) {
+                if ($context = self::context(CONTEXT_COURSE, $courseid)) {
                     $this->get_role_assignment($context->id, $role->id, $user->id, $time);
                     foreach ($groups as $group) {
                         if ($groupid = $this->get_groupid($courseid, $group, $time)) {
@@ -1045,7 +1074,7 @@ class tool_createusers_form extends moodleform {
                 $coursename = $user->username;
             }
             if ($courseid = $this->get_user_courseid($data->enrolcategory, $coursename, $time)) {
-                if ($context = $this->get_context(CONTEXT_COURSE, $courseid)) {
+                if ($context = self::context(CONTEXT_COURSE, $courseid)) {
 
                     // enrol new $user as an "editingteacher"
                     if ($role = $this->get_role_record('editingteacher')) {
@@ -1064,13 +1093,13 @@ class tool_createusers_form extends moodleform {
 
                     // enrol "student" users
                     if ($role = $this->get_role_record('student')) {
-                        if (empty($data->enrolstudents)) {
+                        if (empty($data->allow_student_enrolments)) {
                             $userids = array();
-                        } else if (is_array($data->enrolstudents)) {
-                            $userids = $data->enrolstudents;
+                        } else if (is_array($data->allow_student_enrolments)) {
+                            $userids = $data->allow_student_enrolments;
                             $userids = array_filter($userids);
                         } else {
-                            $userids = array($data->enrolstudents);
+                            $userids = array($data->allow_student_enrolments);
                         }
                         foreach ($userids as $userid) {
                             $this->get_role_assignment($context->id, $role->id, $userid, $time);
@@ -1104,7 +1133,7 @@ class tool_createusers_form extends moodleform {
                     }
 
                     // remove all blocks
-                    $context = $this->get_context(CONTEXT_COURSE, $courseid);
+                    $context = self::context(CONTEXT_COURSE, $courseid);
                     blocks_delete_all_for_context($context->id);
 
                     // remove all badges
@@ -1126,7 +1155,7 @@ class tool_createusers_form extends moodleform {
     }
 
     /**
-     * get_context
+     * context
      *
      * a wrapper method to offer consistent API to get contexts
      * in Moodle 2.0 and 2.1, we use context() function
@@ -1138,7 +1167,7 @@ class tool_createusers_form extends moodleform {
      * @return required context
      * @todo Finish documenting this function
      */
-    public static function get_context($contextlevel, $instanceid=0, $strictness=0) {
+    public static function context($contextlevel, $instanceid=0, $strictness=0) {
         if (class_exists('context_helper')) {
             // use call_user_func() to prevent syntax error in PHP 5.2.x
             // return $classname::instance($instanceid, $strictness);
@@ -1604,6 +1633,7 @@ class tool_createusers_form extends moodleform {
 
         if ($courses = $DB->get_records_select_menu('course', "id $courseselect", $courseparams, 'shortname', 'id,shortname')) {
             foreach ($courses as $id => $name) {
+                $name = format_string($name);
                 $url = new moodle_url('/course/view.php', array('id' => $id));
                 $courses[$id] = html_writer::link($url, $name, array('target' => '_blank'));
             }
@@ -1630,9 +1660,10 @@ class tool_createusers_form extends moodleform {
         $params = array_merge($courseparams, $groupparams);
         if ($groups = $DB->get_records_select('groups', $select, $params, 'name', 'id,courseid,name')) {
             foreach ($groups as $id => $group) {
+                $name = format_string($group->name);
                 $params = array('id' => $group->courseid, 'group' => $id);
                 $url = new moodle_url('/group/index.php', $params);
-                $groups[$id] = html_writer::link($url, $group->name, array('target' => '_blank'));
+                $groups[$id] = html_writer::link($url, $name, array('target' => '_blank'));
             }
             $groups = implode(', ', $groups);
         } else {

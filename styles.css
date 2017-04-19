@@ -25,8 +25,8 @@
  * @since      Moodle 2.0
  */
 
-.path-admin-tool-createusers table.users tr.headings { background-color: #eebbee; }
-.path-admin-tool-createusers table.users tr.odd { background-color: #eeeeaa; }
-.path-admin-tool-createusers table.users tr.even { background-color: #ffffee; }
-.path-admin-tool-createusers table.users th,
-.path-admin-tool-createusers table.users td { border: 1px solid black; border-collapse: collapse; text-align: center; }
+.path-admin-tool-createusers table.createusers tr.headings { background-color: #eebbee; }
+.path-admin-tool-createusers table.createusers tr.odd { background-color: #eeeeaa; }
+.path-admin-tool-createusers table.createusers tr.even { background-color: #ffffee; }
+.path-admin-tool-createusers table.createusers th,
+.path-admin-tool-createusers table.createusers td { border: 1px solid black; border-collapse: collapse; padding: 4px; text-align: center; }
