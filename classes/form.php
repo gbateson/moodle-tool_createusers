@@ -400,7 +400,7 @@ class tool_createusers_form extends moodleform {
             $mform->addHelpButton($name, $name, $tool);
 
             // enrol the following students in each teacher's course
-            $name = 'allow_student_enrolments';
+            $name = 'enrolstudents';
             $label = get_string($name, $tool);
             $select = $DB->sql_like('username', '?').' AND deleted = ?';
             $params = array('%guest%', 0);
@@ -1093,13 +1093,13 @@ class tool_createusers_form extends moodleform {
 
                     // enrol "student" users
                     if ($role = $this->get_role_record('student')) {
-                        if (empty($data->allow_student_enrolments)) {
+                        if (empty($data->enrolstudents)) {
                             $userids = array();
-                        } else if (is_array($data->allow_student_enrolments)) {
-                            $userids = $data->allow_student_enrolments;
+                        } else if (is_array($data->enrolstudents)) {
+                            $userids = $data->enrolstudents;
                             $userids = array_filter($userids);
                         } else {
-                            $userids = array($data->allow_student_enrolments);
+                            $userids = array($data->enrolstudents);
                         }
                         foreach ($userids as $userid) {
                             $this->get_role_assignment($context->id, $role->id, $userid, $time);

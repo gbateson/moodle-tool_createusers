@@ -55,7 +55,7 @@ If a name is specified and a course category with that name does not already exi
 $string['enrolcategoryname'] = 'Course category name';
 $string['enrolcourses'] = 'Enrol in these courses';
 $string['enrolgroups'] = 'Enrol in these groups';
-$string['enrolstudents'] = 'Enrol students';
+$string['enrolstudents'] = 'Enrol these students';
 $string['enrolstudents_help'] = 'Any users selected here will be enrolled as students in each teacher course that this tool creates.';
 $string['error_usernamelowercase'] = 'Usernames can contain only lower case characters (a-z), numeric digits (0-9), hyphens, userscores and dots (- _ .)';
 $string['exclude'] = 'Exclude';
