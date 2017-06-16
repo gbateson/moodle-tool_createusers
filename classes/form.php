@@ -454,7 +454,9 @@ class tool_createusers_form extends moodleform {
 
         // lang
         $name = 'lang';
-        $mform->addElement('select', $name, get_string('preferredlanguage'), get_string_manager()->get_list_of_translations());
+        $label = get_string('preferredlanguage');
+        $langs = get_string_manager()->get_list_of_translations();
+        $mform->addElement('select', $name, $label, $langs);
         $mform->setType($name, PARAM_ALPHANUM);
         $mform->setDefault($name, $CFG->lang);
 
@@ -480,7 +482,8 @@ class tool_createusers_form extends moodleform {
 
         // description
         $name = 'description';
-        $mform->addElement('editor', $name, get_string('userdescription'));
+        $label = get_string('userdescription');
+        $mform->addElement('editor', $name, $label);
         $mform->addHelpButton($name, 'userdescription');
         $mform->setType($name, PARAM_CLEANHTML);
 
