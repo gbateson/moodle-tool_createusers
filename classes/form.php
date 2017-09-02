@@ -336,8 +336,8 @@ class tool_createusers_form extends moodleform {
             } else {
                 $params = array('multiple' => 'multiple', 'size' => min($count, 5));
             }
-            foreach ($courses as $courseid => $coursename) {
-                $courses[$courseid] = format_string($coursename);
+            foreach ($courses as $courseid => $shortname) {
+                $courses[$courseid] = format_string($shortname);
             }
             $mform->addElement('select', $name, $label, $courses, $params);
             $mform->setType($name, PARAM_INT);
@@ -397,6 +397,29 @@ class tool_createusers_form extends moodleform {
             $mform->addElement('selectyesno', $name, $label);
             $mform->setType($name, PARAM_INT);
             $mform->setDefault($name, 1);
+            $mform->addHelpButton($name, $name, $tool);
+
+            // get available course formats
+            $formats = get_sorted_course_formats(true);
+            $formats = array_flip($formats);
+            foreach (array_keys($formats) as $format) {
+                $formats[$format] = get_string('pluginname', "format_$format");
+            }
+
+            // course format
+            $name = 'courseformat';
+            $label = get_string($name, $tool);
+            $mform->addElement('select', $name, $label, $formats);
+            $mform->setType($name, PARAM_PLUGIN);
+            $mform->setDefault($name, 'topics');
+            $mform->addHelpButton($name, 'format', 'moodle');
+
+            // number of sections (=weeks/topics/discussions)
+            $name = 'numsections';
+            $label = get_string($name, $tool);
+            $mform->addElement('select', $name, $label, range(0, 10));
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 0);
             $mform->addHelpButton($name, $name, $tool);
 
             // enrol the following students in each teacher's course
@@ -1043,6 +1066,9 @@ class tool_createusers_form extends moodleform {
             $groups = array_filter($groups);
         }
 
+        $courseformats = get_sorted_course_formats(true);
+        $courseformats = array_flip($courseformats);
+
         foreach ($courseids as $courseid) {
             if ($role = $this->get_role_record('student')) {
                 if ($context = self::context(CONTEXT_COURSE, $courseid)) {
@@ -1070,13 +1096,25 @@ class tool_createusers_form extends moodleform {
         }
 
         $category = '';
+        $tool = 'tool_createusers';
         if ($data->enrolcategory) {
+
+            // set course shortname
             if ($data->doublebyte) {
-                $coursename = mb_convert_kana($user->username, 'AS', 'UTF-8');
+                $shortname = mb_convert_kana($user->username, 'AS', 'UTF-8');
             } else {
-                $coursename = $user->username;
+                $shortname = $user->username;
             }
-            if ($courseid = $this->get_user_courseid($data->enrolcategory, $coursename, $time)) {
+            $fullname = $this->get_multilang_string('courseforuser', $tool, $shortname);
+
+            // should we reset the format and numsections for this this course?
+            if ($DB->record_exists('course', array('shortname' => $shortname))) {
+                $set_format_and_numsections = false;
+            } else {
+                $set_format_and_numsections = true;
+            }
+
+            if ($courseid = $this->get_user_courseid($data->enrolcategory, $shortname, $fullname, $time)) {
                 if ($context = self::context(CONTEXT_COURSE, $courseid)) {
 
                     // enrol new $user as an "editingteacher"
@@ -1146,12 +1184,32 @@ class tool_createusers_form extends moodleform {
                             $badge->delete(false);
                         }
                     }
+
+                    // force reset of course format and numsections
+                    $set_format_and_numsections = true;
                 }
 
+                // set course fromat and numsections, if required
+                if ($set_format_and_numsections) {
+                    if (isset($data->courseformat) && array_key_exists($data->courseformat, $courseformats)) {
+                        $DB->set_field('course', 'format', $data->courseformat, array('id' => $courseid));
+                    }
+                    if (isset($data->numsections) && is_numeric($data->numsections)) {
+                        if (function_exists('course_get_format')) {
+                            // Moodle >= 2.3
+                            $options = course_get_format($courseid)->get_format_options();
+                            $options['numsections'] = $data->numsections;
+                            course_get_format($courseid)->update_course_format_options($options);
+                        } else {
+                            // Moodle <= 2.2
+                            $DB->set_field('course', 'numsections', $data->numsections, array('id' => $courseid));
+                        }
+                    }
+                }
 
                 // format link to course
                 $url = new moodle_url('/course/view.php', array('id' => $courseid));
-                $category = html_writer::link($url, $coursename, array('target' => '_blank'));
+                $category = html_writer::link($url, $shortname, array('target' => '_blank'));
             }
         }
         return $category;
@@ -1846,14 +1904,14 @@ class tool_createusers_form extends moodleform {
      * get_user_courseid
      *
      * @param integer $categoryid
-     * @param string  $coursename
+     * @param string  $shortname
      * @param integer $time
      * @return mixed return id if a course was located/created, FALSE otherwise
      */
-    public function get_user_courseid($categoryid, $coursename, $time, $numsections=3, $format='topics') {
+    public function get_user_courseid($categoryid, $shortname, $fullname, $time, $numsections=3, $format='topics') {
         global $CFG, $DB;
 
-        if ($course = $DB->get_record('course', array('shortname' => $coursename))) {
+        if ($course = $DB->get_record('course', array('shortname' => $shortname))) {
             $DB->set_field('course', 'category', $categoryid, array('id' => $course->id));
             return $course->id;
         }
@@ -1861,8 +1919,8 @@ class tool_createusers_form extends moodleform {
         // create new course
         $course = (object)array(
             'category'      => $categoryid, // crucial !!
-            'fullname'      => $coursename,
-            'shortname'     => $coursename,
+            'fullname'      => $fullname,
+            'shortname'     => $shortname,
             'summary'       => '',
             'summaryformat' => FORMAT_PLAIN, // plain text
             'format'        => $format,
@@ -2029,6 +2087,108 @@ class tool_createusers_form extends moodleform {
                 throw new moodle_exception("Could not delete the $cm->modname (id=$cm->id) from that section (id=$sectionid)");
             }
         }
+    }
+
+    /**
+     * usort_langs
+     *
+     * sort $langs, so that "en" is first
+     * and parent langs (length = 2)
+     * appear before child langs (length > 2)
+     */
+    static public function usort_langs($a, $b) {
+        if ($a=='en') {
+            return -1;
+        }
+        if ($b=='en') {
+            return 1;
+        }
+        // compare parent langs
+        $a_parent = substr($a, 0, 2);
+        $b_parent = substr($b, 0, 2);
+        if ($a_parent < $b_parent) {
+            return -1;
+        }
+        if ($b_parent < $a_parent) {
+            return 1;
+        }
+        // same parent lang, compare lengths
+        $a_len = strlen($a);
+        $b_len = strlen($b);
+        if ($a_len < $b_len) {
+            return -1;
+        }
+        if ($b_len < $a_len) {
+            return 1;
+        }
+        // sibling langs, compare values
+        if ($a < $b) {
+            return -1;
+        }
+        if ($b < $a) {
+            return 1;
+        }
+        return 0; // shouldn't happen !!
+    }
+
+    /**
+     * get_string
+     *
+     * @param object $strman
+     * @return array sorted list of language codes used on this site
+     */
+    static public function get_langs($strman) {
+        static $langs = null;
+        if ($langs===null) {
+            $langs = $strman->get_list_of_translations();
+            $langs = array_keys($langs);
+            usort($langs, array('tool_createusers_form', 'usort_langs'));
+            // sort $langs, so that "en" is first
+            // and parent langs appear before child langs
+        }
+        return $langs;
+    }
+
+    /**
+     * get_string
+     *
+     * @param string $identifier
+     * @param string $component
+     * @param mixed  $params
+     * @return string, return the "multilang" verison of the required string;
+     *                 i.e. <span lang="xx" class="multilang">...></span><span...>...</span>
+     */
+    static public function get_multilang_string($identifier, $component='', $params=null) {
+        $strman = get_string_manager();
+        $langs = self::get_langs($strman);
+        $texts = array();
+        foreach ($langs as $lang) {
+            $strings = $strman->load_component_strings($component, $lang);
+            if (array_key_exists($identifier, $strings)) {
+                $text = $strman->get_string($identifier, $component, $params, $lang);
+                if (array_search($text, $texts)===false) {
+                    $texts[$lang] = $text;
+                }
+            }
+        }
+
+        // this string does not exist - should not happen !!
+        if (empty($texts)) {
+            return '';
+        }
+
+        // special case - this string occurs in only one language pack
+        if (count($texts)==1) {
+            return reset($texts);
+        }
+
+        // format strings as multilang $texts
+        foreach ($texts as $lang => $text) {
+            $params = array('lang' => $lang, 'class' => 'multilang');
+            $texts[$lang] = html_writer::tag('span', $text, $params);
+        }
+
+        return implode('', $texts);
     }
 
     /**
