@@ -28,5 +28,5 @@ defined('MOODLE_INTERNAL') || die();
 $plugin->component = 'tool_createusers';
 $plugin->maturity  = MATURITY_STABLE;
 $plugin->requires  = 2011120500; // Moodle >= 2.2
-$plugin->version   = 2018042728;
-$plugin->release   = '2018-04-27 (28)';
+$plugin->version   = 2018042729;
+$plugin->release   = '2018-04-27 (29)';

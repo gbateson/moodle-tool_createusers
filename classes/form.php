@@ -675,14 +675,34 @@ class tool_createusers_form extends moodleform {
         global $DB;
 
         $i_min = 2;
-        $i_max = 10;
+        $i_max = 20;
         $sql = array();
+        $params = array();
+
+        $regex = $DB->sql_regex_supported();
+        if ($regex) {
+            $where = 'username '.$DB->sql_regex().' ?';
+        } else {
+            // require "." or "_" or "-"
+            $where = $DB->sql_like('username', '?').
+              ' OR '.$DB->sql_like('username', '?').
+              ' OR '.$DB->sql_like('username', '?');
+            // exclude deleted users
+            $where = $DB->sql_like('username', '?', false, false, true).' AND ('.$where.')';
+        }
+        $where = "deleted = ? AND $where";
 
         for ($i=$i_min; $i<=$i_max; $i++) {
-            $sql[] = 'SELECT substring(username, 1, '.$i.') AS prefix, COUNT(*) AS countrecords '.
+            $sql[] = 'SELECT '.$DB->sql_substr('username', 1, $i).' AS prefix, COUNT(*) AS countrecords '.
                      'FROM {user} '.
+                     'WHERE '.$where.' '.
                      'GROUP BY prefix '.
                      'HAVING countrecords >= 2';
+            if ($regex) {
+                array_push($params, 0, '^[^._-].*[._-]');
+            } else {
+                array_push($params, 0, '.%', '%.%', '%_%', '%-%');
+            }
         }
 
         $sql = 'SELECT prefix, countrecords, LENGTH(p.prefix) AS prefixlength '.
@@ -690,7 +710,7 @@ class tool_createusers_form extends moodleform {
                'ORDER BY countrecords DESC, prefixlength DESC, prefix ASC';
 
         $count = 0;
-        if ($prefixes = $DB->get_records_sql_menu($sql, array())) {
+        if ($prefixes = $DB->get_records_sql_menu($sql, $params)) {
             foreach ($prefixes as $prefix => $countrecords) {
                 if ($count >= $limit) {
                     unset($prefixes[$prefix]);
