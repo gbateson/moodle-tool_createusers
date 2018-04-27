@@ -105,6 +105,8 @@ class tool_createusers_form extends moodleform {
         $mform->setType($name, PARAM_INT);
         $mform->setDefault($name, 20);
 
+        $prefixes = $this->get_username_prefixes();
+
         // reuse usernames
         $name = 'oldusernames';
         $label = get_string('oldusernames', $tool);
@@ -120,10 +122,16 @@ class tool_createusers_form extends moodleform {
         $elements[] = $mform->createElement('static', '', '', get_string('include', $tool));
         $elements[] = $mform->createElement('select', $name.'includetype', get_string('includetype', $tool), $options);
         $elements[] = $mform->createElement('text', $name.'include', get_string('include', $tool), array('size' => self::SIZE_TEXT));
+        if ($prefixes) {
+            $elements[] = $mform->createElement('select', $name.'includeprefix', '', $prefixes);
+        }
         $elements[] = $mform->createElement('static', '', '', html_writer::empty_tag('br'));
         $elements[] = $mform->createElement('static', '', '', get_string('exclude', $tool));
         $elements[] = $mform->createElement('select', $name.'excludetype', get_string('excludetype', $tool), $options);
         $elements[] = $mform->createElement('text', $name.'exclude', get_string('exclude', $tool), array('size' => self::SIZE_TEXT));
+        if ($prefixes) {
+            $elements[] = $mform->createElement('select', $name.'excludeprefix', '', $prefixes);
+        }
         $mform->addElement('group', $name, $label, $elements, ' ', false);
         $mform->setType($name.'include', PARAM_TEXT);
         $mform->setType($name.'exclude', PARAM_TEXT);
@@ -574,22 +582,49 @@ class tool_createusers_form extends moodleform {
         $js = '';
         $js .= '<script type="text/javascript">'."\n";
         $js .= "//<![CDATA[\n";
-        $js .= "function createusers_forceLowerCase(ids) {\n";
-        $js .= "    var i_max = ids.length;\n";
-        $js .= "    for (var i=0; i<i_max; i++) {\n";
-        $js .= "        var id = 'id_' + ids[i];\n";
-        $js .= "        var obj = document.getElementById(id);\n";
-        $js .= "        if (obj) {\n";
-        $js .= "            obj.addEventListener('change', function(){\n";
-        $js .= "                var r = new RegExp('[^a-zA-Z0-9._-]+', 'g');\n";
-        $js .= "                this.value = this.value.replace(r, '');\n";
-        $js .= "                this.value = this.value.toLowerCase();\n";
-        $js .= "            });\n";
-        $js .= "        }\n";
-        $js .= "        obj = null;\n";
+
+        $js .= "window.addEvent = function(elm, evt, fn){\n";
+        $js .= "    if (elm.addEventListener) {\n";
+        $js .= "        elm.addEventListener(evt, fn, false);\n";
+        $js .= "    } else if (elm.attachEvent) {\n";
+        $js .= "        elm.attachEvent('on' + evt, fn);\n";
         $js .= "    }\n";
-        $js .= "}\n";
-        $js .= "createusers_forceLowerCase(['usernameprefix', 'usernamesuffix']);\n";
+        $js .= "};\n";
+
+        $js .= "(function() {\n";
+        $js .= "    var fn = function() {\n";
+        $js .= "        var ids = ['prefix', 'suffix'];\n";
+        $js .= "        var i_max = ids.length;\n";
+        $js .= "        for (var i=0; i<i_max; i++) {\n";
+        $js .= "            var id = 'id_username' + ids[i];\n";
+        $js .= "            var obj = document.getElementById(id);\n";
+        $js .= "            if (obj) {\n";
+        $js .= "                window.addEvent(obj, 'change', function(){\n";
+        $js .= "                    var r = new RegExp('[^a-zA-Z0-9._-]+', 'g');\n";
+        $js .= "                    this.value = this.value.replace(r, '');\n";
+        $js .= "                    this.value = this.value.toLowerCase();\n";
+        $js .= "                });\n";
+        $js .= "            }\n";
+        $js .= "            obj = null;\n";
+        $js .= "        }\n";
+        $js .= "        var ids = ['includeprefix', 'excludeprefix'];\n";
+        $js .= "        var i_max = ids.length;\n";
+        $js .= "        for (var i=0; i<i_max; i++) {\n";
+        $js .= "            var id = 'id_oldusernames' + ids[i];\n";
+        $js .= "            var obj = document.getElementById(id);\n";
+        $js .= "            if (obj) {\n";
+        $js .= "                window.addEvent(obj, 'change', function(){\n";
+        $js .= "                    var v = this.options[this.selectedIndex].value;\n";
+        $js .= "                    var id = this.id.replace('prefix', '');\n";
+        $js .= "                    document.getElementById(id).value = v;\n";
+        $js .= "                });\n";
+        $js .= "            }\n";
+        $js .= "            obj = null;\n";
+        $js .= "        }\n";
+        $js .= "    };\n";
+        $js .= "    window.addEvent(window, 'load', fn)\n";
+        $js .= "}());\n";
+
         $js .= "//]]>\n";
         $js .= "</script>\n";
         $mform->addElement('html', $js);
@@ -631,6 +666,57 @@ class tool_createusers_form extends moodleform {
         if (method_exists($mform, 'setExpanded')) {
             $mform->setExpanded($name, $expanded);
         }
+    }
+
+    /**
+     * get_username_prefixes
+     */
+    public function get_username_prefixes($limit=20) {
+        global $DB;
+
+        $i_min = 2;
+        $i_max = 10;
+        $sql = array();
+
+        for ($i=$i_min; $i<=$i_max; $i++) {
+            $sql[] = 'SELECT substring(username, 1, '.$i.') AS prefix, COUNT(*) AS countrecords '.
+                     'FROM {user} '.
+                     'GROUP BY prefix '.
+                     'HAVING countrecords >= 2';
+        }
+
+        $sql = 'SELECT prefix, countrecords, LENGTH(p.prefix) AS prefixlength '.
+               'FROM ('.implode(' UNION ', $sql).') p '.
+               'ORDER BY countrecords DESC, prefixlength DESC, prefix ASC';
+
+        $count = 0;
+        if ($prefixes = $DB->get_records_sql_menu($sql, array())) {
+            foreach ($prefixes as $prefix => $countrecords) {
+                if ($count >= $limit) {
+                    unset($prefixes[$prefix]);
+                } else {
+                    $i_max = strlen($prefix) - 1;
+                    for ($i=$i_min; $i<=$i_max; $i++) {
+                        $p = substr($prefix, 0, $i);
+                        if (array_key_exists($p, $prefixes) && $prefixes[$p]==$countrecords) {
+                            unset($prefixes[$p]);
+                        }
+                    }
+                    if (array_key_exists($prefix, $prefixes)) {
+                        $prefixes[$prefix] = "$prefix ($countrecords)";
+                        $count++;
+                    }
+                }
+            }
+        }
+
+        if (empty($prefixes)) {
+            $prefixes = array();
+        } else {
+            $prefixes = array('' => '') + $prefixes;
+        }
+
+        return $prefixes;
     }
 
     /**
