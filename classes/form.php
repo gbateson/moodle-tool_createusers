@@ -52,18 +52,19 @@ class tool_createusers_form extends moodleform {
     // to a single course (usually the current course)
     protected $forcecourseid = 0;
 
-    const SIZE_INT      = 5;
-    const SIZE_TEXT     = 10;
-    const SIZE_LONGTEXT = 20;
+    const SIZE_INT       = 4;
+    const SIZE_SHORTTEXT = 4;
+    const SIZE_TEXT      = 18;
+    const SIZE_LONGTEXT  = 24;
 
-    const SQL_LIKE      = 0;
-    const SQL_REGEX     = 1;
+    const SQL_LIKE       = 0;
+    const SQL_REGEX      = 1;
 
-    const TYPE_FIXED    = 1;
-    const TYPE_RANDOM   = 2;
-    const TYPE_SEQUENCE = 3;
-    const TYPE_USERID   = 4;
-    const TYPE_USERNAME = 5;
+    const TYPE_FIXED     = 1;
+    const TYPE_RANDOM    = 2;
+    const TYPE_SEQUENCE  = 3;
+    const TYPE_USERID    = 4;
+    const TYPE_USERNAME  = 5;
 
     /**
      * constructor
@@ -210,7 +211,7 @@ class tool_createusers_form extends moodleform {
         // password prefix
         $name = 'passwordprefix';
         $label = get_string('prefix', $tool);
-        $mform->addElement('text', $name, $label, array('size' => self::SIZE_TEXT));
+        $mform->addElement('text', $name, $label, array('size' => self::SIZE_SHORTTEXT));
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, array_rand($this->lowercase).$dot);
 
@@ -245,7 +246,7 @@ class tool_createusers_form extends moodleform {
         // password suffix
         $name = 'passwordsuffix';
         $label = get_string('suffix', $tool);
-        $mform->addElement('text', $name, $label, array('size' => self::SIZE_TEXT));
+        $mform->addElement('text', $name, $label, array('size' => self::SIZE_SHORTTEXT));
         $mform->setType($name, PARAM_TEXT);
         $mform->setDefault($name, '');
 
@@ -351,12 +352,32 @@ class tool_createusers_form extends moodleform {
             $mform->setType($name, PARAM_INT);
             $mform->setDefault($name, 0);
 
+            // get groups menu
+            if ($this->forcecourseid==0) {
+                $groups = false;
+            } else {
+                $groups = groups_get_all_groups($this->forcecourseid, 0, 0, 'id,name');
+            }
+
             // enrol in the following groups
             $name = 'enrolgroups';
             $label = get_string($name, $tool);
-            $mform->addElement('text', $name, $label, array('size' => self::SIZE_LONGTEXT));
-            $mform->setType($name, PARAM_TEXT);
-            $mform->setDefault($name, '');
+            if (empty($groups)) {
+                $mform->addElement('text', $name, $label, array('size' => self::SIZE_LONGTEXT));
+                $mform->setType($name, PARAM_TEXT);
+                $mform->setDefault($name, '');
+            } else {
+                foreach ($groups as $groupid => $group) {
+                    $groups[$groupid] = format_string($group->name);
+                }
+                $count = count($groups);
+                if ($count <= 1) {
+                    $params = array();
+                } else {
+                    $params = array('multiple' => 'multiple', 'size' => min($count, 5));
+                }
+                $mform->addElement('select', $name, $label, $groups, $params);
+            }
         }
 
         // ==================================
@@ -616,6 +637,11 @@ class tool_createusers_form extends moodleform {
         $js .= "                window.addEvent(obj, 'change', function(){\n";
         $js .= "                    var v = this.options[this.selectedIndex].value;\n";
         $js .= "                    var id = this.id.replace('prefix', '');\n";
+        $js .= "                    var type = document.getElementById(id + 'type');\n";
+        $js .= "                    switch (type.options[type.selectedIndex].value) {\n";
+        $js .= "                        case '0': v = (v + '%'); break;\n"; // LIKE
+        $js .= "                        case '1': v = ('^' + v); break;\n"; // REGEX
+        $js .= "                    }\n";
         $js .= "                    document.getElementById(id).value = v;\n";
         $js .= "                });\n";
         $js .= "            }\n";
@@ -1005,7 +1031,7 @@ class tool_createusers_form extends moodleform {
             'idnumber'  => '',
             'firstname' => $firstname,
             'lastname'  => $lastname,
-            'email'     => $username.'@localhost.com',
+            'email'     => $username.'@localhost.invalid',
             'emailstop' => '1',
             'icq'       => '',
             'skype'     => '',
@@ -1167,9 +1193,14 @@ class tool_createusers_form extends moodleform {
         if (empty($data->enrolgroups)) {
             $groups = array();
         } else {
-            $groups = explode(',', $data->enrolgroups);
-            $groups = array_map('trim', $groups);
-            $groups = array_filter($groups);
+            if (is_array($data->enrolgroups)) {
+                // TODO: convert numeric groupids to corresponding groupname 
+                $groups = array();
+            } else {
+                $groups = explode(',', $data->enrolgroups);
+                $groups = array_map('trim', $groups);
+                $groups = array_filter($groups);
+            }
         }
 
         $courseformats = get_sorted_course_formats(true);
