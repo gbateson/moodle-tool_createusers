@@ -1961,6 +1961,24 @@ class tool_createusers_form extends moodleform {
             $cm  = reset($cm);
             $cm->content = $table;
             $DB->set_field('page', 'content', $table, array('id' => $cm->instance));
+
+            // Trigger mod_updated event with information about this page resource.
+            if (class_exists('\\core\\event\\course_module_updated')) {
+                \core\event\course_module_updated::create_from_cm($cm)->trigger();
+            } else {
+                $event = (object)array(
+                    'cmid'       => $cm->id,
+                    'courseid'   => $cm->course,
+                    'modulename' => $cm->modulename,
+                    'name'       => $cm->name,
+                    'userid'     => $USER->id
+                );
+                if (function_exists('events_trigger_legacy')) {
+                    events_trigger_legacy('mod_updated', $event);
+                } else {
+                    events_trigger('mod_updated', $event);
+                }
+            }
         } else {
             $cm = (object)array(
                 // standard page resource fields
@@ -2015,23 +2033,23 @@ class tool_createusers_form extends moodleform {
                 $cm->visible = $DB->get_field('course_sections', 'visible', array('id' => $sectionid));
             }
             set_coursemodule_visible($cm->id, $cm->visible);
-        }
 
-        if (class_exists('\\core\\event\\course_module_created')) {
-            \core\event\course_module_created::create_from_cm($cm)->trigger();
-        } else {
-            // Trigger mod_updated event with information about this module.
-            $event = (object)array(
-                'cmid'       => $cm->id,
-                'courseid'   => $cm->course,
-                'modulename' => $cm->modulename,
-                'name'       => $cm->name,
-                'userid'     => $USER->id
-            );
-            if (function_exists('events_trigger_legacy')) {
-                events_trigger_legacy('mod_created', $event);
+            // Trigger mod_created event with information about this page resource.
+            if (class_exists('\\core\\event\\course_module_created')) {
+                \core\event\course_module_created::create_from_cm($cm)->trigger();
             } else {
-                events_trigger('mod_created', $event);
+                $event = (object)array(
+                    'cmid'       => $cm->id,
+                    'courseid'   => $cm->course,
+                    'modulename' => $cm->modulename,
+                    'name'       => $cm->name,
+                    'userid'     => $USER->id
+                );
+                if (function_exists('events_trigger_legacy')) {
+                    events_trigger_legacy('mod_created', $event);
+                } else {
+                    events_trigger('mod_created', $event);
+                }
             }
         }
 
