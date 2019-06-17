@@ -87,11 +87,14 @@ class tool_createusers_form extends moodleform {
         global $CFG, $DB, $USER;
 
         $mform = $this->_form;
+        $this->set_form_id($mform, get_class($this));
+
         $tool = 'tool_createusers';
         $dot = get_string('stringseparator', $tool);
 
         $username_chars = '/^[a-z0-9._-]+$/';
         $username_error = get_string('error_usernamelowercase', $tool);
+
 
         // ==================================
         // usernames
@@ -109,8 +112,6 @@ class tool_createusers_form extends moodleform {
         $prefixes = $this->get_username_prefixes();
 
         // reuse usernames
-        $name = 'oldusernames';
-        $label = get_string('oldusernames', $tool);
         $options = array();
         if ($DB->sql_regex_supported()) {
             $options[self::SQL_REGEX] = get_string('sqlregex', $tool);
@@ -119,31 +120,21 @@ class tool_createusers_form extends moodleform {
             $default = self::SQL_LIKE;
         }
         $options[self::SQL_LIKE] = get_string('sqllike', $tool);
-        $elements = array();
-        $elements[] = $mform->createElement('static', '', '', get_string('include', $tool));
-        $elements[] = $mform->createElement('select', $name.'includetype', get_string('includetype', $tool), $options);
-        $elements[] = $mform->createElement('text', $name.'include', get_string('include', $tool), array('size' => self::SIZE_TEXT));
-        if ($prefixes) {
-            $elements[] = $mform->createElement('select', $name.'includeprefix', '', $prefixes);
+
+        foreach (array('include', 'exclude') as $type) {
+            $name = 'oldusernames'.$type;
+            $label = get_string($name, $tool);
+            $elements = array();
+            $elements[] = $mform->createElement('select', $name.'type', get_string($name.'type', $tool), $options);
+            $elements[] = $mform->createElement('text', $name.'text', get_string($name.'text', $tool), array('size' => self::SIZE_TEXT));
+            if ($prefixes) {
+                $elements[] = $mform->createElement('select', $name.'prefix', '', $prefixes);
+            }
+            $mform->addElement('group', $name, $label, $elements, ' ', false);
+            $mform->setType($name.'text', PARAM_TEXT);
+            $mform->setType($name.'type', PARAM_INT);
+            $mform->setDefault($name.'type', $default);
         }
-        $elements[] = $mform->createElement('static', '', '', html_writer::empty_tag('br'));
-        $elements[] = $mform->createElement('static', '', '', get_string('exclude', $tool));
-        $elements[] = $mform->createElement('select', $name.'excludetype', get_string('excludetype', $tool), $options);
-        $elements[] = $mform->createElement('text', $name.'exclude', get_string('exclude', $tool), array('size' => self::SIZE_TEXT));
-        if ($prefixes) {
-            $elements[] = $mform->createElement('select', $name.'excludeprefix', '', $prefixes);
-        }
-        $mform->addElement('group', $name, $label, $elements, ' ', false);
-        $mform->setType($name.'include', PARAM_TEXT);
-        $mform->setType($name.'exclude', PARAM_TEXT);
-        $mform->setType($name.'includetype', PARAM_INT);
-        $mform->setType($name.'excludetype', PARAM_INT);
-        $mform->setDefault($name.'includetype', $default);
-        $mform->setDefault($name.'excludetype', $default);
-        //$mform->addGroupRule($name, array(
-        //    $name.'include' => array(array($username_error, 'regex', $username_chars)),
-        //    $name.'exclude' => array(array($username_error, 'regex', $username_chars))
-        //));
 
         // username prefix
         $name = 'usernameprefix';
@@ -642,7 +633,7 @@ class tool_createusers_form extends moodleform {
         $js .= "                        case '0': v = (v + '%'); break;\n"; // LIKE
         $js .= "                        case '1': v = ('^' + v); break;\n"; // REGEX
         $js .= "                    }\n";
-        $js .= "                    document.getElementById(id).value = v;\n";
+        $js .= "                    document.getElementById(id + 'text').value = v;\n";
         $js .= "                });\n";
         $js .= "            }\n";
         $js .= "            obj = null;\n";
@@ -654,6 +645,19 @@ class tool_createusers_form extends moodleform {
         $js .= "//]]>\n";
         $js .= "</script>\n";
         $mform->addElement('html', $js);
+    }
+
+    /**
+     * set_form_id
+     *
+     * @param  object $mform
+     * @param  string $id
+     * @return mixed default value of setting
+     */
+    protected function set_form_id($mform, $id) {
+        $attributes = $mform->getAttributes();
+        $attributes['id'] = $id;
+        $mform->setAttributes($attributes);
     }
 
     /**
@@ -813,20 +817,20 @@ class tool_createusers_form extends moodleform {
 
         // disallow REGEX if DB does not support them
         if (! $DB->sql_regex_supported()) {
-            if (isset($data->oldusernamesinclude)) {
+            if (! empty($data->oldusernamesincludetext)) {
                 if ($data->oldusernamesincludetype==self::SQL_REGEX) {
-                    $data->oldusernamesinclude = '';
+                    $data->oldusernamesincludetext = '';
                 }
             }
-            if (! empty($data->oldusernamesexclude)) {
+            if (! empty($data->oldusernamesexcludetext)) {
                 if ($data->oldusernamesexcludetype==self::SQL_REGEX) {
-                    $data->oldusernamesexclude = '';
+                    $data->oldusernamesexcludetext = '';
                 }
             }
         }
 
         $userids = array();
-        if (! empty($data->oldusernamesinclude)) {
+        if (! empty($data->oldusernamesincludetext)) {
 
             // do not alter admin users or current user
             $users = get_admins();
@@ -841,19 +845,20 @@ class tool_createusers_form extends moodleform {
             // add included users, but ignore excluded users
             if ($data->oldusernamesincludetype==self::SQL_REGEX) {
                 $select .= ' AND username '.$DB->sql_regex(true).' ? ';
-                $params[] = $data->oldusernamesinclude;
-                if (! empty($data->oldusernamesexclude)) {
+                $params[] = $data->oldusernamesincludetext;
+                if (! empty($data->oldusernamesexcludetext)) {
                     $select .= ' AND username '.$DB->sql_regex(false).' ?';
-                    $params[] = $data->oldusernamesexclude;
+                    $params[] = $data->oldusernamesexcludetext;
                 }
             } else {
                 $select .= ' AND '.$DB->sql_like('username', '?');
-                $params[] = $data->oldusernamesinclude;
-                if (! empty($data->oldusernamesexclude)) {
+                $params[] = $data->oldusernamesincludetext;
+                if (! empty($data->oldusernamesexcludetext)) {
                     $select .= ' AND '.$DB->sql_like('username', '?', false, false, true);
-                    $params[] = $data->oldusernamesexclude;
+                    $params[] = $data->oldusernamesexcludetext;
                 }
             }
+
             if ($users = $DB->get_records_select('user', $select, $params, 'id', 'id, username')) {
                 $userids = array_keys($users);
             }
@@ -1194,7 +1199,7 @@ class tool_createusers_form extends moodleform {
             $groups = array();
         } else {
             if (is_array($data->enrolgroups)) {
-                // TODO: convert numeric groupids to corresponding groupname 
+                // TODO: convert numeric groupids to corresponding groupname
                 $groups = array();
             } else {
                 $groups = explode(',', $data->enrolgroups);
@@ -1950,11 +1955,11 @@ class tool_createusers_form extends moodleform {
             $name = get_string('userlogindetailsgroup', 'tool_createusers', $group);
         }
 
-        $select = 'cm.*, ? AS modulename, p.name AS name';
+        $select = 'cm.*, ? AS modname, ? AS modulename, p.name AS name';
         $from   = '{course_modules} cm '.
                   'JOIN {page} p ON cm.module = ? AND cm.instance = p.id';
         $where  = 'p.course = ? AND p.name = ?';
-        $params = array('page', $pagemoduleid, $courseid, $name);
+        $params = array('page', 'page', $pagemoduleid, $courseid, $name);
         $order  = 'cm.visible DESC, cm.added DESC'; // newest, visible cm first
 
         if ($cm = $DB->get_records_sql("SELECT $select FROM $from WHERE $where ORDER BY $order", $params, 0, 1)) {
@@ -1964,6 +1969,7 @@ class tool_createusers_form extends moodleform {
 
             // Trigger mod_updated event with information about this page resource.
             if (class_exists('\\core\\event\\course_module_updated')) {
+                // Moodle >= 2.6
                 \core\event\course_module_updated::create_from_cm($cm)->trigger();
             } else {
                 $event = (object)array(
@@ -1974,8 +1980,10 @@ class tool_createusers_form extends moodleform {
                     'userid'     => $USER->id
                 );
                 if (function_exists('events_trigger_legacy')) {
+                    // Moodle 2.6 - 3.0 ... so not used here anymore
                     events_trigger_legacy('mod_updated', $event);
                 } else {
+                    // Moodle <= 2.5
                     events_trigger('mod_updated', $event);
                 }
             }
@@ -1999,6 +2007,7 @@ class tool_createusers_form extends moodleform {
                 'course'          => $courseid,
                 'section'         => $sectionnum,
                 'module'          => $pagemoduleid,
+                'modname'         => 'page',
                 'modulename'      => 'page',
                 'add'             => 'page',
                 'update'          => 0,
@@ -2036,6 +2045,7 @@ class tool_createusers_form extends moodleform {
 
             // Trigger mod_created event with information about this page resource.
             if (class_exists('\\core\\event\\course_module_created')) {
+                // Moodle >= 2.6
                 \core\event\course_module_created::create_from_cm($cm)->trigger();
             } else {
                 $event = (object)array(
@@ -2046,8 +2056,10 @@ class tool_createusers_form extends moodleform {
                     'userid'     => $USER->id
                 );
                 if (function_exists('events_trigger_legacy')) {
+                    // Moodle 2.6 - 3.0 ... so not used here anymore
                     events_trigger_legacy('mod_created', $event);
                 } else {
+                    // Moodle <= 2.5
                     events_trigger('mod_created', $event);
                 }
             }

@@ -60,8 +60,6 @@ $string['enrolgroups'] = 'Enrol in these groups';
 $string['enrolstudents'] = 'Enrol these students';
 $string['enrolstudents_help'] = 'Any users selected here will be enrolled as students in each teacher course that this tool creates.';
 $string['error_usernamelowercase'] = 'Usernames can contain only lower case characters (a-z), numeric digits (0-9), hyphens, userscores and dots (- _ .)';
-$string['exclude'] = 'Exclude';
-$string['excludetype'] = 'SQL exclude type';
 $string['firstnametype'] = 'First name type';
 $string['fixed'] = 'Fixed';
 $string['folderpath'] = 'Course files folder';
@@ -82,8 +80,6 @@ File system repositories in each course can be enabled as follows:
   * enable both checkboxes to allow admins to add repositories to courses and for personal use
   * click button "Create a repository instance"
   * enter name, e.g. Site files, and click button "Save"';
-$string['include'] = 'Include';
-$string['includetype'] = 'SQL include type';
 $string['incrementusers'] = 'Increment';
 $string['lastnametype'] = 'Last name type';
 $string['lowercasesuffix'] = 'Lower case suffix';
@@ -91,7 +87,14 @@ $string['lowercaseprefix'] = 'Lower case prefix';
 $string['names'] = 'Names';
 $string['numsections_help'] = 'The number of sections (i.e. topics, weeks, or discussions) required in new or reset courses.';
 $string['numsections'] = 'Number of sections';
-$string['oldusernames'] = 'Re-use old usernames';
+$string['oldusernamesexclude'] = 'Exclude old usernames';
+$string['oldusernamesexcludeprefix'] = 'SQL exclude prefix';
+$string['oldusernamesexcludetext'] = 'SQL exclude text';
+$string['oldusernamesexcludetype'] = 'SQL exclude type';
+$string['oldusernamesinclude'] = 'Include old usernames';
+$string['oldusernamesincludeprefix'] = 'SQL include prefix';
+$string['oldusernamesincludetext'] = 'SQL include text';
+$string['oldusernamesincludetype'] = 'SQL include type';
 $string['pageheader'] = 'Create and enrol anonymous users';
 $string['passwords'] = 'Passwords';
 $string['passwordtype'] = 'Password type';
