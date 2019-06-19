@@ -302,6 +302,13 @@ class tool_createusers_form extends moodleform {
             $mform->setType($name, PARAM_INT);
             $mform->setDefault($name, 1);
 
+            // reset competencies
+            $name = 'resetcompetencies';
+            $label = get_string($name, $tool);
+            $mform->addElement('selectyesno', $name, $label);
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 1);
+
             // cancel role assignments
             $name = 'cancelroles';
             $label = get_string($name, $tool);
@@ -1171,6 +1178,9 @@ class tool_createusers_form extends moodleform {
         if ($data->resetbadges) {
             $this->reset_badges($user);
         }
+        if ($data->resetcompetencies) {
+            $this->reset_competencies($user);
+        }
         if ($data->cancelenrolments) {
             enrol_user_delete($user); // lib/enrollib.php
         }
@@ -1811,6 +1821,42 @@ class tool_createusers_form extends moodleform {
         $DB->delete_records_select('badge_manual_award', 'issuerid = ?', $params);
         $DB->delete_records_select('badge_manual_award', 'recipientid = ?', $params);
     }
+
+    /**
+     * reset_competencies
+     *
+     * @param object $user
+     * @return void
+     */
+    public function reset_competencies($user) {
+        global $DB;
+
+        if (get_config('core_competency', 'enabled')) { // Moodle >= 3.1
+
+            $params = array('userid' => $user->id);
+            if ($ids = $DB->get_records_menu('competency_usercomp', $params, 'id,competencyid')) {
+                $ids = array_keys($ids);
+                list($select, $params) = $DB->get_in_or_equal($ids);
+                $DB->delete_records_select('competency_usercomp', "id $select", $params);
+                $DB->delete_records_select('competency_evidence', "usercompetencyid $select", $params);
+            }
+
+            $select = 'userid = ?';
+            $params = array($user->id);
+            $DB->delete_records_select('competency_usercompcourse', $select, $params);
+            $DB->delete_records_select('competency_usercompplan', $select, $params);
+            $DB->delete_records_select('competency_plan', $select, $params);
+
+            $params = array('userid' => $user->id);
+            if ($ids = $DB->get_records_menu('competency_userevidence', $params, 'id,userid')) {
+                $ids = array_keys($ids);
+                list($select, $params) = $DB->get_in_or_equal($ids);
+                $DB->delete_records_select('competency_userevidence', "id $select", $params);
+                $DB->delete_records_select('competency_userevidencecomp', "userevidenceid $select", $params);
+            }
+        }
+    }
+
 
     /**
      * format_courses_and_groups

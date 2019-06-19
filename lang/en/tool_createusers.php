@@ -100,6 +100,7 @@ $string['passwords'] = 'Passwords';
 $string['passwordtype'] = 'Password type';
 $string['prefix'] = 'Prefix';
 $string['resetbadges'] = 'Reset badges';
+$string['resetcompetencies'] = 'Reset competencies';
 $string['resetcourses'] = 'Reset courses';
 $string['resetcourses_help'] = 'This setting affects labels, resources, activities, blocks and badges in any course that is re-used as a teacher course.
 
