@@ -2,6 +2,12 @@
 Change log for tool_createusers
 ========================================
 
+2019-10-12 (38)
+ - add message to CHANGES.txt
+
+2019-10-12 (38)
+ -  tidy up text in CHANGES.txt
+
 2019-06-19 (37)
  -  add new setting to reset competencies 
 
@@ -52,24 +58,10 @@ Change log for tool_createusers
 
 2016-03-18 (22)
  -  standardize 'die;' to 'die();' 
-
-2016-03-18 (22)
- -  when adding users to groups, we reset the groupdata cache for that course in Moodle >= 3.0 
-
-2016-03-18 (22)
- -  when adding users to groups, we reset the groupdata cache for that course in Moodle >= 3.0 
-
-2016-03-18 (22)
- -  when adding users to groups, we reset the groupdata cache for that course in Moodle >= 3.0 
-
-2016-03-18 (22)
  -  when adding users to groups, we reset the groupdata cache for that course in Moodle >= 3.0 
 
 2016-03-17 (21)
- -  tool/creatusers + fixlinks + qtypeorder rename constructor to "__construct" as required by PHP >= 7.0 
+ -  rename constructor to "__construct" as required by PHP >= 7.0 
 
 2016-02-01 (20)
- -  tool/creatusers + fixlinks + qtypeorder rename constructor to "__construct" as required by PHP >= 7.0 
-
-2016-02-01 (20)
- -  tool/createusers add to SVN repository 
+ -  add to SVN repository 
