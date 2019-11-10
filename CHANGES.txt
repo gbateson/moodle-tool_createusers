@@ -2,66 +2,60 @@
 Change log for tool_createusers
 ========================================
 
-2019-10-12 (38)
- - add message to CHANGES.txt
+2019-11-10 (39)
+ - standardize layout and spelling in CHANGES.txt
 
 2019-10-12 (38)
- -  tidy up text in CHANGES.txt
+ - tidy up text in CHANGES.txt
 
 2019-06-19 (37)
- -  add new setting to reset competencies 
+ - add new setting to reset competencies
 
 2019-06-17 (36)
- -  adminreplace include/exclude element group with two element groups in order to improve display in themes such as 'Boost' that use flex for CSS layout 
-
-2019-06-17 (36)
- -  adminreplace include/exclude element group with two element groups in order to improve display in themes such as 'Boost' that use flex for CSS layout 
+ - adminreplace include/exclude element group with two element groups in order to improve display in themes such as 'Boost' that use flex for CSS layout
 
 2019-04-05 (35)
- -  add comments about events_trigger availability 
+ - add comments about events_trigger availability
 
 2019-03-30 (34)
- -  ensure modname is set when creating new page of login details in Moodle >= 3.5 
+ - ensure modname is set when creating new page of login details in Moodle >= 3.5
 
 2019-03-29 (33)
- -  fix modname for Moodle >= 3.5 
+ - fix modname for Moodle >= 3.5
 
 2019-01-22 (32)
- -  differentiate between mod_created and mod_updated events when creating/updating the page resource of usernames and passwords 
+ - differentiate between mod_created and mod_updated events when creating/updating the page resource of usernames and passwords
 
 2019-01-21 (31)
- -  remove use of 'events_trigger' for compatability with Moodle 3.6 
+ - remove use of 'events_trigger' for compatability with Moodle 3.6
 
 2018-11-16 (30)
- -  add formatted search string when including/excluding previously existing usernames 
+ - add formatted search string when including/excluding previously existing usernames
 
 2018-04-27 (29)
- -  optimize SQL to extract common username prefixes 
+ - optimize SQL to extract common username prefixes
 
 2018-04-27 (28)
- -  add menu of common username prefixes to include/exclude when reusing usernames 
+ - add menu of common username prefixes to include/exclude when reusing usernames
 
 2017-09-02 (27)
- -  add new settings for to sepcify format and number of sections in new or reste courses 
+ - add new settings for to sepcify format and number of sections in new or reste courses
 
 2017-06-16 (26)
- -  standardize use of $label when adding elements to form 
+ - standardize use of $label when adding elements to form
 
 2017-06-15 (25)
- -  rename allow_student_enrolments field back to its original name: enrolstudents 
+ - rename allow_student_enrolments field back to its original name: enrolstudents
 
 2017-04-19 (24)
- -  add internal properties to allow the form to be used by the maj_submissions block 
+ - add internal properties to allow the form to be used by the maj_submissions block
 
 2016-08-24 (23)
- -  standardize 'die;' to 'die();' 
-
-2016-03-18 (22)
- -  standardize 'die;' to 'die();' 
- -  when adding users to groups, we reset the groupdata cache for that course in Moodle >= 3.0 
+ - standardize 'die;' to 'die();'
+ - when adding users to groups, we reset the groupdata cache for that course in Moodle >= 3.0
 
 2016-03-17 (21)
- -  rename constructor to "__construct" as required by PHP >= 7.0 
+ - rename constructor to "__construct" as required by PHP >= 7.0
 
 2016-02-01 (20)
- -  add to SVN repository 
+ - add to SVN repository
