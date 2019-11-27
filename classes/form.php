@@ -1209,13 +1209,14 @@ class tool_createusers_form extends moodleform {
             $groups = array();
         } else {
             if (is_array($data->enrolgroups)) {
-                // TODO: convert numeric groupids to corresponding groupname
-                $groups = array();
+                // array of groupids
+                $groups = $data->enrolgroups;
             } else {
+                // comma-delimited string of group names
                 $groups = explode(',', $data->enrolgroups);
-                $groups = array_map('trim', $groups);
-                $groups = array_filter($groups);
             }
+            $groups = array_map('trim', $groups);
+            $groups = array_filter($groups);
         }
 
         $courseformats = get_sorted_course_formats(true);
@@ -1226,7 +1227,12 @@ class tool_createusers_form extends moodleform {
                 if ($context = self::context(CONTEXT_COURSE, $courseid)) {
                     $this->get_role_assignment($context->id, $role->id, $user->id, $time);
                     foreach ($groups as $group) {
-                        if ($groupid = $this->get_groupid($courseid, $group, $time)) {
+                        if (is_numeric($group)) {
+                            $groupid = $DB->get_field('groups', 'id', array('id' => $group, 'courseid' => $courseid));
+                        } else {
+                            $groupid = $this->get_groupid($courseid, $group, $time);
+                        }
+                        if ($groupid) {
                             $this->get_group_memberid($groupid, $user->id, $time);
                         }
                     }
@@ -1897,26 +1903,32 @@ class tool_createusers_form extends moodleform {
 
         $groups = $data->enrolgroups;
 
-        if (! is_array($groups)) {
+        if (is_array($groups)) {
+            // array of groupids
+            $groupfield = 'id';
+        } else {
+            // comma-delimited string of group names
             $groups = explode(',', $groups);
             $groups = array_map('trim', $groups);
             $groups = array_filter($groups);
+            $groupfield = 'name';
         }
 
-        list($groupselect, $groupparams) = $DB->get_in_or_equal($groups);
-
-        $select = "courseid $courseselect AND name $groupselect";
-        $params = array_merge($courseparams, $groupparams);
-        if ($groups = $DB->get_records_select('groups', $select, $params, 'name', 'id,courseid,name')) {
-            foreach ($groups as $id => $group) {
-                $name = format_string($group->name);
-                $params = array('id' => $group->courseid, 'group' => $id);
-                $url = new moodle_url('/group/index.php', $params);
-                $groups[$id] = html_writer::link($url, $name, array('target' => '_blank'));
+        if (count($groups)) {
+            list($groupselect, $groupparams) = $DB->get_in_or_equal($groups);
+            $select = "courseid $courseselect AND $groupfield $groupselect";
+            $params = array_merge($courseparams, $groupparams);
+            if ($groups = $DB->get_records_select('groups', $select, $params, 'name', 'id,courseid,name')) {
+                foreach ($groups as $id => $group) {
+                    $name = format_string($group->name);
+                    $params = array('id' => $group->courseid, 'group' => $id);
+                    $url = new moodle_url('/group/index.php', $params);
+                    $groups[$id] = html_writer::link($url, $name, array('target' => '_blank'));
+                }
+                $groups = implode(', ', $groups);
+            } else {
+                $groups = ''; // shouldn't happen !!
             }
-            $groups = implode(', ', $groups);
-        } else {
-            $groups = ''; // shouldn't happen !!
         }
 
         return array($courses, $groups);
@@ -1935,8 +1947,23 @@ class tool_createusers_form extends moodleform {
             return false;
         }
 
-        $courses = $data->enrolcourses;
+        if (empty($data->enrolgroups)) {
+            $groups = array();
+        } else {
+            $groups = $data->enrolgroups;
+            if (is_array($groups)) {
+                if (count($groups)) {
+                    list($select, $params) = $DB->get_in_or_equal($groups);
+                    $groups = $DB->get_records_select_menu('groups', "id $select", $params, 'name', 'id,name');
+                }
+            } else {
+                $groups = explode(',', $groups);
+                $groups = array_map('trim', $groups);
+                $groups = array_filter($groups);
+            }
+        }
 
+        $courses = $data->enrolcourses;
         if (! is_array($courses)) {
             $courses = explode(',', $courses);
             $courses = array_filter($courses);
@@ -1944,31 +1971,20 @@ class tool_createusers_form extends moodleform {
 
         list($select, $params) = $DB->get_in_or_equal($courses);
 
-        if (empty($data->enrolgroups)) {
-            $groups = array();
-        } else {
-            $groups = $data->enrolgroups;
-            if (! is_array($groups)) {
-                $groups = explode(',', $groups);
-                $groups = array_map('trim', $groups);
-                $groups = array_filter($groups);
-            }
-        }
-
         $links = '';
         if ($courses = $DB->get_records_select('course', "id $select", $params, 'id', 'id,shortname')) {
             foreach ($courses as $course) {
                 if (empty($groups)) {
                     if ($cm = $this->add_login_resource($course->id, $table)) {
                         $url = new moodle_url('/mod/page/view.php', array('id' => $cm->id));
-                        $link = html_writer::link($url, $cm->name, array('target' => '_blank'));
+                        $link = html_writer::link($url, format_string($cm->name), array('target' => '_blank'));
                         $links .= html_writer::tag('li', $link);
                     }
                 } else {
                     foreach ($groups as $group) {
                         if ($cm = $this->add_login_resource($course->id, $table, $group)) {
                             $url = new moodle_url('/mod/page/view.php', array('id' => $cm->id));
-                            $link = html_writer::link($url, $cm->name, array('target' => '_blank'));
+                            $link = html_writer::link($url, format_string($cm->name), array('target' => '_blank'));
                             $links .= html_writer::tag('li', $link);
                         }
                     }
@@ -1985,9 +2001,11 @@ class tool_createusers_form extends moodleform {
      *
      * @param  object  $course
      * @param  string  $table
+     * @param  string  $groupname (optional, default='')
+     * @param  integer $sectionnum (optional, default=0)
      * @return object  $cm course_module record of newly added/updated page resource
      */
-    public function add_login_resource($courseid, $table, $group='', $sectionnum=0) {
+    public function add_login_resource($courseid, $table, $groupname='', $sectionnum=0) {
         global $DB, $USER;
 
         static $pagemoduleid = null;
@@ -1995,10 +2013,10 @@ class tool_createusers_form extends moodleform {
             $pagemoduleid = $DB->get_field('modules', 'id', array('name' => 'page'));
         }
 
-        if ($group=='') {
+        if ($groupname=='') {
             $name = get_string('userlogindetails', 'tool_createusers');
         } else {
-            $name = get_string('userlogindetailsgroup', 'tool_createusers', $group);
+            $name = get_string('userlogindetailsgroup', 'tool_createusers', $groupname);
         }
 
         $select = 'cm.*, ? AS modname, ? AS modulename, p.name AS name';

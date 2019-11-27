@@ -2,6 +2,9 @@
 Change log for tool_createusers
 ========================================
 
+2019-11-27 (40)
+ - fix group enrolment when using forcecourseid is set (e.g. by block_maj_submissions
+
 2019-11-10 (39)
  - standardize layout and spelling in CHANGES.txt
 
