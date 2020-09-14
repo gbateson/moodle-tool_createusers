@@ -2,6 +2,9 @@
 Change log for tool_createusers
 ========================================
 
+2020-09-13 (41)
+ - ensure password is encrypted using MD5 with password salt
+
 2019-11-27 (40)
  - fix group enrolment when using forcecourseid is set (e.g. by block_maj_submissions
 

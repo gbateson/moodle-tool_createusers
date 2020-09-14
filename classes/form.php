@@ -1029,6 +1029,12 @@ class tool_createusers_form extends moodleform {
         $description = $data->description;
         $mnethostid  = $CFG->mnet_localhost_id;
 
+        if (empty($CFG->passwordsaltmain)) {
+            $salt = '';
+        } else {
+            $salt = $CFG->passwordsaltmain;
+        }
+
         return (object)array(
             'id'        => $userid,
             'username'  => $username,
@@ -1038,7 +1044,7 @@ class tool_createusers_form extends moodleform {
             'deleted'   => '0',
             'suspended' => '0',
             'mnethostid' => $mnethostid,
-            'password'  => md5($password),
+            'password'  => md5($password.$passwordsalt),
             'rawpassword'  => $password,
             'idnumber'  => '',
             'firstname' => $firstname,
