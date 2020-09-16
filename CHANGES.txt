@@ -2,6 +2,9 @@
 Change log for tool_createusers
 ========================================
 
+2020-09-16 (42)
+ - add link to 'accounts' menu as well as 'tools' menu in admin settings
+
 2020-09-13 (41)
  - ensure password is encrypted using MD5 with password salt
 

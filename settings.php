@@ -26,6 +26,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 if ($hassiteconfig) {
-    $ADMIN->add('tools', new admin_externalpage('toolcreateusers', get_string('pluginname', 'tool_createusers'),
-                                                $CFG->wwwroot.'/'.$CFG->admin.'/tool/createusers/index.php'));
+    $text = get_string('pluginname', 'tool_createusers');
+    $url = $CFG->wwwroot.'/'.$CFG->admin.'/tool/createusers/index.php';
+    $ADMIN->add('tools', new admin_externalpage('toolcreateusers', $text, $url));
+    $ADMIN->add('accounts', new admin_externalpage('accountscreateusers', $text, $url));
 }
