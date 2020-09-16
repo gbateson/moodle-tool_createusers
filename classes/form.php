@@ -926,7 +926,9 @@ class tool_createusers_form extends moodleform {
 
             // print headings (first time only)
             if ($table=='') {
-                $table .= html_writer::start_tag('table', array('class' => 'createusers', 'border' => 1, 'cellspacing' => 4, 'cellpadding' => '4'));
+                $table .= html_writer::start_tag('table', array('class' => 'createusers', 'border' => 1,
+                                                                'cellspacing' => 4,'cellpadding' => '4',
+                                                                'style' => 'max-width: 100%; width: max-content;'));
                 $table .= html_writer::start_tag('tr', array('class' => 'headings', 'bgcolor' => '#eebbee'));
                 foreach ($columns as $column) {
                     switch (true) {
