@@ -45,8 +45,13 @@ class tool_createusers_form extends moodleform {
     protected $uppercase = null;
 
     // should we allow student/teacher enolments
+    protected $allow_role_enrolments = false;
     protected $allow_student_enrolments = true;
     protected $allow_teacher_enrolments = true;
+
+    protected $default_enrol_method = 'manual';
+    protected $default_enrol_role = 'student';
+    protected $default_enrol_status = ENROL_USER_ACTIVE;
 
     // we can restrict the list of student-enrollable courses
     // to a single course (usually the current course)
@@ -282,11 +287,98 @@ class tool_createusers_form extends moodleform {
         }
 
         // ==================================
-        // student enrolments
+        // Student/Guest enrolments
         // ==================================
         //
-        if ($this->allow_student_enrolments) {
-            $this->add_heading($mform, 'studentenrolments', $tool, true);
+        if ($this->allow_role_enrolments || $this->allow_student_enrolments) {
+
+            if ($this->allow_role_enrolments) {
+                $this->add_heading($mform, 'enrolments', 'enrol', true);
+            } else {
+                $this->add_heading($mform, 'studentenrolments', $tool, true);
+            }
+
+            $enrolmethods = array();
+            $enrolids = array();
+            $roleids = array();
+
+            $default_enrol_id = 0;
+            $default_role_id = $DB->get_field('role', 'id', array('shortname' => $this->default_enrol_role));
+
+            $disable_enrol_methods = array();
+            $disable_enrol_ids = array();
+
+            $plugins = enrol_get_plugins(true);
+            if (empty($this->course)) {
+                foreach ($plugins as $method => $plugin) {
+                    if (in_array($method, array('manual', 'self'))) {
+                        $enrolmethods[$method] = get_string('pluginname', 'enrol_'.$method);
+                    } else {
+                        $disable_enrol_methods[] = $method;
+                    }
+                }
+                $roleids = get_default_enrol_roles(context_system::instance());
+            } else {
+                $instances = enrol_get_instances($this->course->id, true);
+                foreach ($instances as $id => $instance) {
+                    $method = $instance->enrol;
+                    if (empty($plugins[$method])) {
+                        continue; // skip missing/disabled plugins
+                    }
+                    $plugin = $plugins[$method];
+                    $enrolids[$id] = $plugin->get_instance_name($instance);
+                    if ($plugin->allow_manage($instance) == false) {
+                        $disable_enrol_ids[] = $id;
+                    }
+                    if ($method == $this->default_enrol_method) {
+                        $default_enrol_id = $id;
+                    }
+                }
+                $roleids = get_assignable_roles($this->course->context);
+            }
+
+            if (count($enrolmethods)) {
+                $name = 'enrolmethod';
+                $label = get_string('enrolmentmethod', 'enrol');
+                $mform->addElement('select', $name, $label, $enrolmethods);
+                $mform->setType($name, PARAM_ALPHANUM);
+                $mform->setDefault($name, $this->default_enrol_method);
+            }
+
+            if (count($enrolids)) {
+                $name = 'enrolid';
+                $label = get_string('enrolmentmethod', 'enrol');
+                $mform->addElement('select', $name, $label, $enrolids);
+                $mform->setType($name, PARAM_INT);
+                $mform->setDefault($name, $default_enrol_id);
+            }
+
+            if (count($roleids)) {
+                $name = 'roleid';
+                $label = get_string('role');
+                $mform->addElement('select', $name, $label, $roleids);
+                $mform->setType($name, PARAM_INT);
+                $mform->setDefault($name, $default_role_id);
+            }
+
+            // active or inactive (=suspended)
+            if (count($enrolmethods) || count($enrolids)) {
+                $name = 'enrolstatus';
+                $label = get_string('status');
+                $options = array(0 => get_string('active'),
+                                 1 => get_string('suspended'));
+                $mform->addElement('select', $name, $label, $options);
+                $mform->setType($name, PARAM_INT);
+                $mform->setDefault($name, $this->default_enrol_status);
+
+                // disabled status, if enrol method does not it to be suspended
+                foreach ($disable_enrol_methods as $method) {
+                    $mform->disabledIf($name, 'enrolmethod', 'eq', $method);
+                }
+                foreach ($disable_enrol_ids as $id) {
+                    $mform->disabledIf($name, 'enrolid', 'eq', $id);
+                }
+            }
 
             // reset grades
             $name = 'resetgrades';
@@ -706,6 +798,23 @@ class tool_createusers_form extends moodleform {
     }
 
     /**
+     * add_field
+     *
+     * @param object $mform
+     * @param string $plugin
+     * @param string $type e.g. month, day, hour
+     * @return void, but will modify $mform
+     */
+    protected function add_field($mform, $plugin, $name, $elementtype, $paramtype, $options=null, $default=null) {
+        $configname = 'config_'.$name;
+        $label = get_string($name, $plugin);
+        $mform->addElement($elementtype, $configname, $label, $options);
+        $mform->setType($configname, $paramtype);
+        $mform->setDefault($configname, $this->get_original_value($name, $default));
+        $mform->addHelpButton($configname, $name, $plugin);
+    }
+
+    /**
      * get_username_prefixes
      */
     public function get_username_prefixes($limit=20) {
@@ -1046,8 +1155,8 @@ class tool_createusers_form extends moodleform {
             'deleted'   => '0',
             'suspended' => '0',
             'mnethostid' => $mnethostid,
-            'password'  => md5($password.$passwordsalt),
-            'rawpassword'  => $password,
+            'password'  => md5($password.$salt),
+            'rawpassword' => $password,
             'idnumber'  => '',
             'firstname' => $firstname,
             'lastname'  => $lastname,
@@ -1197,7 +1306,7 @@ class tool_createusers_form extends moodleform {
             $DB->delete_records('groups_members', array('userid' => $user->id));
         }
 
-        if ($this->allow_student_enrolments==false) {
+        if ($this->allow_role_enrolments==false && $this->allow_student_enrolments==false) {
             $data->enrolgroups = null;
         }
         if ($this->allow_teacher_enrolments==false) {
@@ -1230,20 +1339,16 @@ class tool_createusers_form extends moodleform {
         $courseformats = get_sorted_course_formats(true);
         $courseformats = array_flip($courseformats);
 
+        $enrolmethod = (empty($data->enrolmethod) ? '' : $data->enrolmethod);
+        $enrolid     = (empty($data->enrolid)     ? 0  : $data->enrolid);
+        $roleid      = (empty($data->roleid)      ? 0  : $data->roleid);
+        $enrolstatus = (empty($data->enrolstatus) ? 0  : $data->enrolstatus);
+
         foreach ($courseids as $courseid) {
-            if ($role = $this->get_role_record('student')) {
-                if ($context = self::context(CONTEXT_COURSE, $courseid)) {
+            if ($context = self::context(CONTEXT_COURSE, $courseid)) {
+
+                if ($role = $this->get_role_from_id($roleid)) {
                     $this->get_role_assignment($context->id, $role->id, $user->id, $time);
-                    foreach ($groups as $group) {
-                        if (is_numeric($group)) {
-                            $groupid = $DB->get_field('groups', 'id', array('id' => $group, 'courseid' => $courseid));
-                        } else {
-                            $groupid = $this->get_groupid($courseid, $group, $time);
-                        }
-                        if ($groupid) {
-                            $this->get_group_memberid($groupid, $user->id, $time);
-                        }
-                    }
                     if (method_exists($context, 'mark_dirty')) {
                         // Moodle >= 2.2
                         $context->mark_dirty();
@@ -1251,9 +1356,24 @@ class tool_createusers_form extends moodleform {
                         // Moodle <= 2.1
                         mark_context_dirty($context->path);
                     }
-                }
-                if ($enrol = $this->get_enrol($courseid, $role->id, $user->id, $time)) {
-                    $this->get_user_enrolment($enrol->id, $user->id, $time);
+                    if ($enrolid) {
+                        $enrol = $this->get_enrol_from_id($courseid, $enrolid);
+                    } else {
+                        $enrol = $this->get_enrol_from_method($courseid, $role->id, $user->id, $time, $enrolmethod);
+                    }
+                    if ($enrol) {
+                        $enrolment = $this->get_user_enrolment($enrol->id, $user->id, $time, $enrolstatus);
+                        foreach ($groups as $group) {
+                            if (is_numeric($group)) {
+                                $groupid = $DB->get_field('groups', 'id', array('id' => $group, 'courseid' => $courseid));
+                            } else {
+                                $groupid = $this->get_groupid($courseid, $group, $time);
+                            }
+                            if ($groupid) {
+                                $this->get_group_memberid($groupid, $user->id, $time);
+                            }
+                        }
+                    }
                 }
             }
             if (function_exists('groups_cache_groupdata')) {
@@ -1284,7 +1404,7 @@ class tool_createusers_form extends moodleform {
                 if ($context = self::context(CONTEXT_COURSE, $courseid)) {
 
                     // enrol new $user as an "editingteacher"
-                    if ($role = $this->get_role_record('editingteacher')) {
+                    if ($role = $this->get_role_from_name('editingteacher')) {
                         $this->get_role_assignment($context->id, $role->id, $user->id, $time);
                         if (method_exists($context, 'mark_dirty')) {
                             // Moodle >= 2.2
@@ -1293,13 +1413,13 @@ class tool_createusers_form extends moodleform {
                             // Moodle <= 2.1
                             mark_context_dirty($context->path);
                         }
-                        if ($enrol = $this->get_enrol($courseid, $role->id, $user->id, $time)) {
+                        if ($enrol = $this->get_enrol_from_method($courseid, $role->id, $user->id, $time, 'manual')) {
                             $this->get_user_enrolment($enrol->id, $user->id, $time);
                         }
                     }
 
                     // enrol "student" users
-                    if ($role = $this->get_role_record('student')) {
+                    if ($role = $this->get_role_from_name('student')) {
                         if (empty($data->enrolstudents)) {
                             $userids = array();
                         } else if (is_array($data->enrolstudents)) {
@@ -1317,7 +1437,7 @@ class tool_createusers_form extends moodleform {
                                 // Moodle <= 2.1
                                 mark_context_dirty($context->path);
                             }
-                            if ($enrol = $this->get_enrol($courseid, $role->id, $userid, $time)) {
+                            if ($enrol = $this->get_enrol($courseid, $role->id, $userid, $time, 'manual')) {
                                 $this->get_user_enrolment($enrol->id, $userid, $time);
                             }
                         }
@@ -1442,12 +1562,23 @@ class tool_createusers_form extends moodleform {
     }
 
     /**
-     * get_role_record
+     * get_role_from_id
      *
      * @param string $name
      * @return object or boolean (FALSE)
      */
-    public function get_role_record($name) {
+    public function get_role_from_id($id) {
+        global $DB;
+        return $DB->get_record('role', array('id' => $id));
+    }
+
+    /**
+     * get_role_from_name
+     *
+     * @param string $name
+     * @return object or boolean (FALSE)
+     */
+    public function get_role_from_name($name) {
         global $DB;
 
         if ($role = $DB->get_record('role', array('shortname' => $name))) {
@@ -1477,6 +1608,20 @@ class tool_createusers_form extends moodleform {
     }
 
     /**
+     * get_enrol_from_id
+     *
+     * @param integer $courseid
+     * @param integer $id from "enrol" table
+     * @return object or boolean (FALSE)
+     */
+    public function get_enrol_from_id($courseid, $id) {
+        global $DB;
+        $params = array('id' => $enrolid,
+                        'courseid' => $courseid);
+        return $DB->get_record('enrol', array('id' => $enrolid));
+    }
+
+    /**
      * get_enrol
      *
      * @param integer $courseid
@@ -1485,14 +1630,31 @@ class tool_createusers_form extends moodleform {
      * @param integer $time
      * @return object or boolean (FALSE)
      */
-    public function get_enrol($courseid, $roleid, $userid, $time) {
+    public function get_enrol_from_method($courseid, $roleid, $userid, $time, $enrolmethod) {
         global $DB;
-        $params = array('enrol' => 'manual', 'courseid' => $courseid, 'roleid' => $roleid);
+
+        if (empty($enrolmethod)) {
+            return false; // shouldn't happen !!
+        }
+
+        $params = array('enrol' => $enrolmethod,
+                        'courseid' => $courseid,
+                        'roleid' => $roleid);
         if ($record = $DB->get_record('enrol', $params)) {
+            if ($record->status == ENROL_INSTANCE_DISABLED) {
+                $record->status = ENROL_INSTANCE_ENABLED;
+                if ($DB->update_record('enrol', $record)) {
+                    if (class_exists('\\core\\event\\enrol_instance_updated')) { // Moodle >= 3.0
+                        \core\event\enrol_instance_updated::create_from_record($record)->trigger();
+                    }
+                }
+            }
             return $record;
         }
+
         $record = (object)array(
-            'enrol'        => 'manual',
+            'enrol'        => $enrolmethod,
+            'status'       => ENROL_INSTANCE_ENABLED,
             'courseid'     => $courseid,
             'roleid'       => $roleid,
             'modifierid'   => $userid,
@@ -1500,6 +1662,9 @@ class tool_createusers_form extends moodleform {
             'timemodified' => $time
         );
         if ($record->id = $DB->insert_record('enrol', $record)) {
+            if (class_exists('\\core\\event\\enrol_instance_created')) { // Moodle >= 3.0
+                \core\event\enrol_instance_created::create_from_record($record)->trigger();
+            }
             return $record;
         }
         return false;
@@ -1516,7 +1681,9 @@ class tool_createusers_form extends moodleform {
      */
     public function get_role_assignment($contextid, $roleid, $userid, $time) {
         global $DB, $USER;
-        $params = array('roleid' => $roleid, 'contextid' => $contextid, 'userid' => $userid);
+        $params = array('roleid' => $roleid,
+                        'contextid' => $contextid,
+                        'userid' => $userid);
         if ($record = $DB->get_record('role_assignments', $params)) {
             return $record;
         }
@@ -1541,10 +1708,12 @@ class tool_createusers_form extends moodleform {
      * @param integer $time
      * @return boolean TRUE if a new role_assignment was created, FALSE otherwise
      */
-    public function get_user_enrolment($enrolid, $userid, $time) {
+    public function get_user_enrolment($enrolid, $userid, $time, $status=ENROL_USER_ACTIVE) {
         global $DB, $USER;
-        $params = array('enrolid' => $enrolid, 'userid' => $userid);
+        $params = array('enrolid' => $enrolid,
+                        'userid' => $userid);
         if ($record = $DB->get_record('user_enrolments', $params)) {
+            $record->status = $status;
             $record->timestart = $time;
             $record->timeend = 0;
             if ($DB->update_record('user_enrolments', $record)) {
@@ -1552,6 +1721,7 @@ class tool_createusers_form extends moodleform {
             }
         } else {
             $record = (object)array(
+                'status'       => $status,
                 'enrolid'      => $enrolid,
                 'userid'       => $userid,
                 'modifierid'   => $USER->id,
@@ -1560,7 +1730,7 @@ class tool_createusers_form extends moodleform {
                 'timecreated'  => $time,
                 'timemodified' => $time
             );
-            if ($record->id = $DB->insert_record('user_enrolments', $params)) {
+            if ($record->id = $DB->insert_record('user_enrolments', $record)) {
                 return $record;
             }
         }
