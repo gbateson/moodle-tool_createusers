@@ -307,11 +307,12 @@ class tool_createusers_form extends moodleform {
 
             $disable_enrol_methods = array();
             $disable_enrol_ids = array();
+            $allowed_methods = array('manual', 'self');
 
             $plugins = enrol_get_plugins(true);
             if (empty($this->course)) {
                 foreach ($plugins as $method => $plugin) {
-                    if (in_array($method, array('manual', 'self'))) {
+                    if (in_array($method, $allowed_methods)) {
                         $enrolmethods[$method] = get_string('pluginname', 'enrol_'.$method);
                     } else {
                         $disable_enrol_methods[] = $method;
@@ -371,7 +372,7 @@ class tool_createusers_form extends moodleform {
                 $mform->setType($name, PARAM_INT);
                 $mform->setDefault($name, $this->default_enrol_status);
 
-                // disabled status, if enrol method does not it to be suspended
+                // disable status, if enrol method does not it to be suspended
                 foreach ($disable_enrol_methods as $method) {
                     $mform->disabledIf($name, 'enrolmethod', 'eq', $method);
                 }
@@ -602,7 +603,7 @@ class tool_createusers_form extends moodleform {
         $mform->setType($name, PARAM_ALPHANUM);
         $mform->setDefault($name, $CFG->lang);
 
-        // calendar
+        // calendar type
         if (file_exists($CFG->dirroot.'/calendar/classes/type_factory.php')) {
             // Moodle >= 2.6
             $types = \core_calendar\type_factory::get_list_of_calendar_types();
@@ -610,16 +611,29 @@ class tool_createusers_form extends moodleform {
             // Moodle <= 2.5
             $types = array();
         }
-        $name = 'calendar';
-        if (count($types) > 1) {
-            $label = get_string('preferredcalendar', 'calendar');
-            $mform->addElement('select', $name, $label, $types);
-            $mform->setType($name, PARAM_ALPHA);
-            $mform->setDefault($name, $CFG->calendartype);
+
+        $name = 'calendartype';
+        if (empty($CFG->$name)) {
+            $default = '';
         } else {
-            $value = (empty($CFG->calendartype) ? '' : $CFG->calendartype);
-            $mform->addElement('hidden', $name, $label);
-            $mform->setType($name, PARAM_ALPHA);
+            $default = $CFG->$name;
+        }
+        switch (count($types)) {
+            case 0:
+                $mform->addElement('hidden', $name, $default);
+                $mform->setType($name, PARAM_ALPHA);
+                break;
+            case 1:
+                $mform->addElement('hidden', $name, key($types));
+                $mform->setType($name, PARAM_ALPHA);
+                break;
+            default:
+                // Must be Moodle >= 2.6 to get here,
+                // so we can use ""preferredcalendar" string.
+                $label = get_string('preferredcalendar', 'calendar');
+                $mform->addElement('select', $name, $label, $types);
+                $mform->setDefault($name, $default);
+                $mform->setType($name, PARAM_ALPHA);
         }
 
         // description
@@ -889,7 +903,7 @@ class tool_createusers_form extends moodleform {
      * create_users
      */
     public function create_users() {
-        global $DB, $USER;
+        global $CFG, $DB, $USER;
 
         // get form data
         $data = $this->get_data();
@@ -1008,6 +1022,30 @@ class tool_createusers_form extends moodleform {
             $nums = range($start, $end, $step);
         }
 
+        // Detect Booststrap themes
+        // theme/boost: Moodle >= 3.2
+        // theme/bootstrapbase: Moodle 2.5 - 3.6
+        $bootstrap = (file_exists($CFG->dirroot.'/theme/boost') ||
+                      file_exists($CFG->dirroot.'/theme/boostbase'));
+
+        // set HTML attributes for TABLE and THEAD 
+        if ($bootstrap) {
+            $table_params = array('class' => 'table table-striped', 'border' => 1,
+                                  'style' => 'max-width: 100%; width: max-content;');
+            $thead_params = array('class' => 'thead-dark'); // similar to "bg-dark text-light"
+            $cell_params = null;
+        } else {
+            $table_params = array('class' => 'createusers', 'border' => 1,
+                                  'cellspacing' => 4,'cellpadding' => 4,
+                                  'style' => 'max-width: 100%; width: max-content;');
+            $thead_params = array('class' => 'headings', 'bgcolor' => '#eebbee');
+            $cell_params = array('class' => '',
+                                 'style' => 'border: 1px solid black; '.
+                                            'border-collapse: collapse; '.
+                                            'padding: 4px; '.
+                                            'text-align: center;');
+        }
+
         // create users
         $table = '';
         for ($i=0; $i<$data->countusers; $i++) {
@@ -1035,10 +1073,9 @@ class tool_createusers_form extends moodleform {
 
             // print headings (first time only)
             if ($table=='') {
-                $table .= html_writer::start_tag('table', array('class' => 'createusers', 'border' => 1,
-                                                                'cellspacing' => 4,'cellpadding' => '4',
-                                                                'style' => 'max-width: 100%; width: max-content;'));
-                $table .= html_writer::start_tag('tr', array('class' => 'headings', 'bgcolor' => '#eebbee'));
+                $table .= html_writer::start_tag('table', $table_params);
+                $table .= html_writer::start_tag('thead', $thead_params);
+                $table .= html_writer::start_tag('tr');
                 foreach ($columns as $column) {
                     switch (true) {
                         case ($column=='newuser'):
@@ -1065,41 +1102,47 @@ class tool_createusers_form extends moodleform {
                         default:
                             $heading = $column;
                     }
-                    $table .= html_writer::tag('th', $heading, array('class' => $column));
+                    $cell_params['class'] = $column;
+                    $table .= html_writer::tag('th', $heading, $cell_params);
                 }
                 $table .= html_writer::end_tag('tr');
+                $table .= html_writer::end_tag('thead');
+                $table .= html_writer::start_tag('tbody');
 
                 list($courses, $groups) = $this->format_courses_and_groups($data);
             }
 
             // print user data
-            if ($i % 2) {
-                $class = 'user odd';
-                $bgcolor = '#eeeeaa';
+            if ($bootstrap) {
+                $params = null;
             } else {
-                $class = 'user even';
-                $bgcolor = '#ffffee';
-            }
-            $table .= html_writer::start_tag('tr', array('class' => $class, 'bgcolor' => $bgcolor));
-            foreach ($columns as $column) {
-                if ($column=='courses') {
-                    $table .= html_writer::tag('td', $courses, array('class' => $column));
-                } else if ($column=='groups') {
-                    $table .= html_writer::tag('td', $groups, array('class' => $column));
-                } else if ($column=='category') {
-                    $table .= html_writer::tag('td', $category, array('class' => $column));
+                if ($i % 2) {
+                    $params = array('class' => 'user odd', 'bgcolor' => '#eeeeaa');
                 } else {
-                    $table .= html_writer::tag('td', $user->$column, array('class' => $column));
+                    $params = array('class' => 'user even', 'bgcolor' => '#ffffee');
+                }
+            }
+            $table .= html_writer::start_tag('tr', $params);
+            foreach ($columns as $column) {
+                $cell_params['class'] = $column;
+                if ($column=='courses') {
+                    $table .= html_writer::tag('td', $courses, $cell_params);
+                } else if ($column=='groups') {
+                    $table .= html_writer::tag('td', $groups, $cell_params);
+                } else if ($column=='category') {
+                    $table .= html_writer::tag('td', $category, $cell_params);
+                } else {
+                    $table .= html_writer::tag('td', $user->$column, $cell_params);
                 }
             }
             $table .= html_writer::end_tag('tr');
         }
 
         if ($table) {
+            $table .= html_writer::end_tag('tbody');
             $table .= html_writer::end_tag('table');
+            echo $table;
         }
-
-        echo preg_replace('/\s*(bgcolor|border|cellpadding|cellspacing)="[^"]*"/i', '', $table);
 
         // add this table as a resource to each course
         $this->add_login_resources($data, $table);
@@ -1136,7 +1179,7 @@ class tool_createusers_form extends moodleform {
         } else {
             $timezone = $data->timezone;
         }
-        $calendar = $data->calendar;
+        $calendartype = $data->calendartype;
         $description = $data->description;
         $mnethostid  = $CFG->mnet_localhost_id;
 
@@ -1200,7 +1243,7 @@ class tool_createusers_form extends moodleform {
             'firstnamephonetic' => '',
             'middlename'    => '',
             'alternatename' => $alternatename,
-            'calendartype'  => $calendar
+            'calendartype'  => $calendartype
         );
     }
 
@@ -1611,10 +1654,10 @@ class tool_createusers_form extends moodleform {
      * get_enrol_from_id
      *
      * @param integer $courseid
-     * @param integer $id from "enrol" table
+     * @param integer $enrolid from "enrol" table
      * @return object or boolean (FALSE)
      */
-    public function get_enrol_from_id($courseid, $id) {
+    public function get_enrol_from_id($courseid, $enrolid) {
         global $DB;
         $params = array('id' => $enrolid,
                         'courseid' => $courseid);

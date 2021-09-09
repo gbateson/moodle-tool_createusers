@@ -2,6 +2,9 @@
 Change log for tool_createusers
 ========================================
 
+2021-09-09 (46)
+ - use Bootstrap classes to format the table containing details of newly-created user
+
 2021-01-22 (44)
  - allow enrolment using various methods and roles
 
