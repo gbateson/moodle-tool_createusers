@@ -1480,7 +1480,7 @@ class tool_createusers_form extends moodleform {
                                 // Moodle <= 2.1
                                 mark_context_dirty($context->path);
                             }
-                            if ($enrol = $this->get_enrol($courseid, $role->id, $userid, $time, 'manual')) {
+                            if ($enrol = $this->get_enrol_from_method($courseid, $role->id, $userid, $time, 'manual')) {
                                 $this->get_user_enrolment($enrol->id, $userid, $time);
                             }
                         }
