@@ -1578,6 +1578,18 @@ class tool_createusers_form extends moodleform {
      * @return string
      */
      function get_userfields($tableprefix = '', array $extrafields = NULL, $idalias = 'id', $fieldprefix = '') {
+        if (class_exists('\\core_user\\fields')) { // Moodle >= 3.11
+            $fields = \core_user\fields::for_userpic();
+            if ($extrafields) {
+                $fields->including($extrafields);
+            }
+            $fields = $fields->get_sql($tableprefix, false, $fieldprefix, $idalias, false)->selects;
+            if ($tableprefix === '') {
+                $fields = str_replace('{user}.', '', $fields);
+            }
+            return str_replace(', ', ',', $fields);
+            // id, picture, firstname, lastname, firstnamephonetic, lastnamephonetic, middlename, alternatename, imagealt, email
+        }
         if (class_exists('user_picture')) { // Moodle >= 2.6
             return user_picture::fields($tableprefix, $extrafields, $idalias, $fieldprefix);
         }

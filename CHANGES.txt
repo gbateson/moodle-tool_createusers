@@ -2,6 +2,9 @@
 Change log for tool_createusers
 ========================================
 
+2022-04-04 (48)
+ - use '
+
 2021-12-15 (47)
  - admin_createusers fix error regarding undefined method _form::get_enrol()
 
