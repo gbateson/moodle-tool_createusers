@@ -852,12 +852,16 @@ class tool_createusers_form extends moodleform {
         }
         $where = "deleted = ? AND $where";
 
+        // Note that we cannot use "countrecords" in the HAVING clause, because
+        // in PostgreSQL, you cannot use the column aliases in the HAVING clause.
+        // https://www.postgresqltutorial.com/postgresql-tutorial/postgresql-having/
+
         for ($i=$i_min; $i<=$i_max; $i++) {
             $sql[] = 'SELECT '.$DB->sql_substr('username', 1, $i).' AS prefix, COUNT(*) AS countrecords '.
                      'FROM {user} '.
                      'WHERE '.$where.' '.
                      'GROUP BY prefix '.
-                     'HAVING countrecords >= 2';
+                     'HAVING COUNT(*) >= 2';
             if ($regex) {
                 array_push($params, 0, '^[^._-].*[._-]');
             } else {
@@ -865,9 +869,9 @@ class tool_createusers_form extends moodleform {
             }
         }
 
-        $sql = 'SELECT prefix, countrecords, LENGTH(p.prefix) AS prefixlength '.
+        $sql = 'SELECT p.prefix, p.countrecords, LENGTH(p.prefix) AS prefixlength '.
                'FROM ('.implode(' UNION ', $sql).') p '.
-               'ORDER BY countrecords DESC, prefixlength DESC, prefix ASC';
+               'ORDER BY p.countrecords DESC, prefixlength DESC, p.prefix ASC';
 
         $count = 0;
         if ($prefixes = $DB->get_records_sql_menu($sql, $params)) {
@@ -1158,12 +1162,23 @@ class tool_createusers_form extends moodleform {
         global $CFG, $DB;
 
         // names
-        $username  = $this->create_name($data, 'username',  $num);
-        $username  = self::textlib('strtolower', $username);
-        $password  = $this->create_name($data, 'password',  $num, $username);
+        $username = $this->create_name($data, 'username',  $num);
+        $username = self::textlib('strtolower', $username);
+        $rawpassword = $this->create_name($data, 'password',  $num, $username);
         $firstname = $this->create_name($data, 'firstname', $num, $username);
-        $lastname  = $this->create_name($data, 'lastname',  $num, $username);
+        $lastname = $this->create_name($data, 'lastname',  $num, $username);
         $alternatename = $this->create_name($data, 'alternatename', $num, $username);
+
+        // Hash the password in normal Moodle way.
+        // In Moodle >= 2.5, there is a $fasthash parameter,
+        // but we don't use it to maintain backwards compatability.
+        if (function_exists('hash_internal_user_password')) {
+            // Moodle >= 1.6
+            $password = hash_internal_user_password($rawpassword);
+        } else {
+            // Moodle <= 1.5
+            $password = md5($rawpassword);
+        }
 
         // userid
         if ($data->usernametype==self::TYPE_USERID) {
@@ -1181,13 +1196,7 @@ class tool_createusers_form extends moodleform {
         }
         $calendartype = $data->calendartype;
         $description = $data->description;
-        $mnethostid  = $CFG->mnet_localhost_id;
-
-        if (empty($CFG->passwordsaltmain)) {
-            $salt = '';
-        } else {
-            $salt = $CFG->passwordsaltmain;
-        }
+        $mnethostid = $CFG->mnet_localhost_id;
 
         return (object)array(
             'id'        => $userid,
@@ -1198,8 +1207,8 @@ class tool_createusers_form extends moodleform {
             'deleted'   => '0',
             'suspended' => '0',
             'mnethostid' => $mnethostid,
-            'password'  => md5($password.$salt),
-            'rawpassword' => $password,
+            'password'  => $password,
+            'rawpassword' => $rawpassword,
             'idnumber'  => '',
             'firstname' => $firstname,
             'lastname'  => $lastname,
