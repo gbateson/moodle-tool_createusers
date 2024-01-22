@@ -1030,7 +1030,7 @@ class tool_createusers_form extends moodleform {
         // theme/boost: Moodle >= 3.2
         // theme/bootstrapbase: Moodle 2.5 - 3.6
         $bootstrap = (file_exists($CFG->dirroot.'/theme/boost') ||
-                      file_exists($CFG->dirroot.'/theme/boostbase'));
+                      file_exists($CFG->dirroot.'/theme/bootstrapbase'));
 
         // set HTML attributes for TABLE and THEAD 
         if ($bootstrap) {

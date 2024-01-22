@@ -2,6 +2,9 @@
 Change log for tool_createusers
 ========================================
 
+2024-01-22 (50)
+ - when detecting Boost themes, search for 'bootstrapbase', not 'boostbase'
+
 2024-01-19 (49)
  - For compatability with Moodle >= 4.3, hhash password using standard Moodle function. For compatabilty with PostgreSQL, don't use field alias in HAVING clause.
 
